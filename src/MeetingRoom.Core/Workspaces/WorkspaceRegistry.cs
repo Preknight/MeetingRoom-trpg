@@ -225,7 +225,8 @@ public sealed class WorkspaceRegistry
 
             return new WorkspaceDescriptor(
                 layout.Root,
-                WorkspaceDescriptor.ParseKind(node["kind"]?.GetValue<string>()),
+                // 旧清单没有 kind 字段：按 Legacy 处理（同时含 meetings/stories），不要套用新建时的默认类型。
+                WorkspaceDescriptor.ParseKind(node["kind"]?.GetValue<string>(), WorkspaceKind.Legacy),
                 node["name"]?.GetValue<string>() is { Length: > 0 } name ? name : DefaultName(layout.Root),
                 node["createdAt"]?.GetValue<DateTimeOffset>() ?? DateTimeOffset.UtcNow);
         }
