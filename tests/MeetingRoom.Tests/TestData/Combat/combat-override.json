@@ -1,0 +1,112 @@
+{
+  "seed": 5,
+  "rounds": 0,
+  "combatants": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "side": "party",
+      "dexterityModifier": 3,
+      "initiative": 15,
+      "speedFeet": 30
+    },
+    {
+      "id": "vecna",
+      "name": "Vecna",
+      "side": "foe",
+      "dexterityModifier": 2,
+      "initiative": 10,
+      "speedFeet": 30
+    }
+  ],
+  "sheets": {
+    "ella": {
+      "characterId": "ella",
+      "maxHp": 30,
+      "currentHp": 30,
+      "tempHp": 0,
+      "armorClass": 13
+    },
+    "vecna": {
+      "characterId": "vecna",
+      "maxHp": 12,
+      "currentHp": 12,
+      "tempHp": 0,
+      "armorClass": 12
+    }
+  },
+  "steps": [
+    {
+      "override": {
+        "field": "hp",
+        "value": 1,
+        "reason": "DM 判定它只剩一口气"
+      },
+      "actorId": "vecna"
+    },
+    {
+      "override": {
+        "field": "status",
+        "value": "dead",
+        "reason": "DM 直接判死"
+      },
+      "actorId": "vecna"
+    },
+    {
+      "override": {
+        "field": "luck",
+        "value": 1
+      },
+      "actorId": "vecna",
+      "expectRejected": true
+    },
+    {
+      "override": {
+        "field": "condition",
+        "value": {
+          "name": "Prone",
+          "rounds": 2
+        }
+      },
+      "actorId": "ella"
+    },
+    {
+      "override": {
+        "field": "initiative",
+        "value": 30
+      },
+      "actorId": "vecna"
+    },
+    {
+      "override": {
+        "field": "budget",
+        "value": {
+          "action": false,
+          "movementFeet": 0
+        }
+      },
+      "actorId": "ella"
+    },
+    {
+      "override": {
+        "field": "tempHp",
+        "value": 5
+      },
+      "actorId": "ella"
+    },
+    {
+      "override": {
+        "field": "maxHp",
+        "value": 40
+      },
+      "actorId": "ella"
+    },
+    {
+      "override": {
+        "field": "ac",
+        "value": 18
+      },
+      "actorId": "ella"
+    }
+  ]
+}

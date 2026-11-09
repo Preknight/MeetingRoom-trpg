@@ -1,0 +1,30 @@
+# ---- 构建产物 ----
+[Bb]in/
+[Oo]bj/
+publish/
+.vs/
+.idea/
+*.user
+*.suo
+
+# ---- 发布物 ----
+*.zip
+# 发布输出目录（2.7 的 SelfContained 验证落在这里）
+/output/
+
+# ---- 运行时数据 ----
+# 开发期落在 bin/ 下；发布期与 exe 同级（见设计文档 §10.1）
+/data/
+/logs/
+
+# ---- 验证截图 ----
+# 真实运行验证的截图（浏览器 MCP 产出）：本地留档，不进仓库，避免仓库膨胀
+/docs/screenshots/
+
+# ---- 系统 ----
+Thumbs.db
+.DS_Store
+
+# ---- Python 工具缓存 ----
+__pycache__/
+*.pyc

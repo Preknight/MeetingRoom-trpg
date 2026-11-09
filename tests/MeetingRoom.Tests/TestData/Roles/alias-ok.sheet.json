@@ -1,0 +1,9 @@
+{
+  "characterId": "alias-ok",
+  "maxHp": 20,
+  "currentHp": 20,
+  "tempHp": 0,
+  "ac": 14,
+  "abilities": { "str": 12, "dex": 15, "con": 13, "int": 10, "wis": 11, "cha": 9 },
+  "profBonus": 2
+}

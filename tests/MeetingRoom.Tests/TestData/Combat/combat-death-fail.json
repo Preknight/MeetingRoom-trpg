@@ -1,0 +1,81 @@
+{
+  "seed": 2,
+  "rounds": 0,
+  "combatants": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "side": "party",
+      "dexterityModifier": 3,
+      "initiative": 15,
+      "speedFeet": 30
+    },
+    {
+      "id": "vecna",
+      "name": "Vecna",
+      "side": "foe",
+      "dexterityModifier": 2,
+      "initiative": 10,
+      "speedFeet": 30
+    }
+  ],
+  "sheets": {
+    "ella": {
+      "characterId": "ella",
+      "maxHp": 30,
+      "currentHp": 30,
+      "tempHp": 0
+    },
+    "vecna": {
+      "characterId": "vecna",
+      "maxHp": 12,
+      "currentHp": 12,
+      "tempHp": 0
+    }
+  },
+  "steps": [
+    {
+      "kind": "attack",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "weaponId": "Longsword|XPHB",
+      "attackBonus": 8,
+      "damageBonus": 3,
+      "damageDice": "3d6",
+      "damageType": "slashing",
+      "targetArmorClass": 5,
+      "distanceFeet": 5,
+      "reason": "一击打倒"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    }
+  ]
+}

@@ -1,0 +1,135 @@
+{
+  "schema": "meetingroom-rules/3",
+  "monsterTemplates": [
+    {
+      "id": "Goblin|MM",
+      "name": "Goblin",
+      "cnName": "地精",
+      "keywords": ["Goblin", "地精"],
+      "source": "MM",
+      "type": "humanoid",
+      "size": "S",
+      "alignment": ["N", "E"],
+      "cr": "1/4",
+      "habitat": null,
+      "fluff": "地精成群结队出没，靠人数与偷袭取胜；单打独斗时更愿意逃。"
+    }
+  ],
+  "spells": [
+    {
+      "id": "Fireball|PHB",
+      "name": "Fireball",
+      "cnName": "火球术",
+      "keywords": ["Fireball", "火球术"],
+      "source": "PHB",
+      "level": 3,
+      "school": "V",
+      "time": [{ "number": 1, "unit": "action" }],
+      "range": { "type": "point", "distance": { "type": "feet", "amount": 150 } },
+      "components": { "v": true, "s": true, "m": "a ball of bat guano and sulfur" },
+      "duration": [{ "type": "instant" }],
+      "damage": [{ "dice": "8d6", "type": "fire" }],
+      "scaling": [{ "base": "8d6", "perLevel": "1d6" }],
+      "save": "dexterity",
+      "areaTags": ["S"],
+      "text": "一团火球在指定点炸开，范围内的生物做敏捷豁免，失败受全额伤害。"
+    },
+    {
+      "id": "Cure Wounds|PHB",
+      "name": "Cure Wounds",
+      "cnName": "治疗伤口",
+      "keywords": ["Cure Wounds", "治疗伤口"],
+      "source": "PHB",
+      "level": 1,
+      "school": "A",
+      "time": [{ "number": 1, "unit": "action" }],
+      "range": { "type": "point", "distance": { "type": "touch" } },
+      "components": { "v": true, "s": true },
+      "duration": [{ "type": "instant" }],
+      "damage": [],
+      "scaling": [{ "base": "2d8", "perLevel": "1d8" }],
+      "save": null,
+      "areaTags": [],
+      "text": "触碰一个生物，恢复生命值。"
+    },
+    {
+      "id": "Magic Missile|PHB",
+      "name": "Magic Missile",
+      "cnName": "魔法飞弹",
+      "keywords": ["Magic Missile", "魔法飞弹"],
+      "source": "PHB",
+      "level": 1,
+      "school": "V",
+      "time": [{ "number": 1, "unit": "action" }],
+      "range": { "type": "point", "distance": { "type": "feet", "amount": 120 } },
+      "components": { "v": true, "s": true },
+      "duration": [{ "type": "instant" }],
+      "damage": [{ "dice": "3d4+3", "type": "force" }],
+      "scaling": [{ "base": "3d4+3", "perLevel": "1d4+1" }],
+      "save": null,
+      "areaTags": [],
+      "text": "三枚力场飞弹自动命中，可分别指定目标。"
+    }
+  ],
+  "items": [
+    {
+      "id": "Longsword|PHB",
+      "name": "Longsword",
+      "cnName": "长剑",
+      "keywords": ["Longsword", "长剑"],
+      "source": "PHB",
+      "kind": "weapon",
+      "type": "M",
+      "dmg1": "1d8",
+      "dmg2": "1d10",
+      "mastery": ["Sap"],
+      "properties": ["V"],
+      "weight": 3,
+      "value": 1500,
+      "text": "单手 1d8、双手 1d10 的军用近战武器。"
+    },
+    {
+      "id": "Dagger|PHB",
+      "name": "Dagger",
+      "cnName": "匕首",
+      "keywords": ["Dagger", "匕首"],
+      "source": "PHB",
+      "kind": "weapon",
+      "type": "M",
+      "dmg1": "1d4",
+      "dmg2": null,
+      "mastery": ["Nick", "Vex"],
+      "properties": ["F", "L", "T"],
+      "weight": 1,
+      "value": 200,
+      "text": "轻型灵巧武器，可投掷。"
+    }
+  ],
+  "conditions": [
+    {
+      "id": "Prone|PHB",
+      "name": "Prone",
+      "cnName": "倒地",
+      "keywords": ["Prone", "倒地"],
+      "source": "PHB",
+      "text": "倒地者的近战攻击有优势来源、自身攻击有劣势，起身要花一半移动力。"
+    }
+  ],
+  "skills": [
+    { "id": "Persuasion|PHB", "name": "Persuasion", "cnName": "游说", "keywords": ["Persuasion", "游说"], "source": "PHB", "ability": "cha", "text": "说服别人按你的意思做。" },
+    { "id": "Insight|PHB", "name": "Insight", "cnName": "洞悉", "keywords": ["Insight", "洞悉"], "source": "PHB", "ability": "wis", "text": "判断对方的真实意图。" },
+    { "id": "Perception|PHB", "name": "Perception", "cnName": "察觉", "keywords": ["Perception", "察觉"], "source": "PHB", "ability": "wis", "text": "注意到环境里的东西。" },
+    { "id": "Sleight of Hand|PHB", "name": "Sleight of Hand", "cnName": "巧手", "keywords": ["Sleight of Hand", "巧手"], "source": "PHB", "ability": "dex", "text": "手上的小动作不被发现。" }
+  ],
+  "actions": [
+    {
+      "id": "Dash|PHB",
+      "name": "Dash",
+      "cnName": "疾走",
+      "keywords": ["Dash", "疾走"],
+      "source": "PHB",
+      "time": [{ "number": 1, "unit": "action" }],
+      "text": "本回合额外获得等于速度的移动力。"
+    }
+  ]
+}

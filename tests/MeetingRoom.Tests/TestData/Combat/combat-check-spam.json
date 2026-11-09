@@ -1,0 +1,12 @@
+{
+  "seed": 4,
+  "rounds": 0,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15, "speedFeet": 30 }
+  ],
+  "checks": [
+    { "actorId": "ella", "targetId": "chest", "kind": "skill", "skill": "Investigation", "dc": 14, "modifier": 2, "reason": "看符纹" },
+    { "actorId": "ella", "targetId": "chest", "kind": "skill", "skill": "Investigation", "dc": 14, "modifier": 2, "reason": "看符纹" },
+    { "actorId": "ella", "targetId": "chest", "kind": "skill", "skill": "Investigation", "dc": 14, "modifier": 2, "reason": "看符纹" }
+  ]
+}

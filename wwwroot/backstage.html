@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>后台观察 · MeetingRoom</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="icon" href="data:,">
+</head>
+<body class="backstage">
+  <header class="backstage-header">
+    <h1>后台观察</h1>
+    <span id="bs-status" class="backstage-status" role="status">正在连接…</span>
+
+    <label class="backstage-toggle">
+      <input id="bs-follow" type="checkbox" checked>
+      跟随最新
+    </label>
+
+    <label class="backstage-field">
+      角色
+      <select id="bs-who"><option value="">全部</option></select>
+    </label>
+
+    <label class="backstage-field">
+      类型
+      <select id="bs-kind">
+        <option value="">全部</option>
+        <option value="thought">只思考</option>
+        <option value="tool">只工具</option>
+      </select>
+    </label>
+
+    <label class="backstage-field">
+      跳到幕
+      <input id="bs-jump" type="number" min="1" step="1" placeholder="幕号">
+    </label>
+    <button id="bs-jump-go" type="button">跳转</button>
+    <button id="bs-clear" type="button">回到最新</button>
+  </header>
+
+  <main class="backstage-grid">
+    <section class="backstage-col">
+      <h2>前台剧情 <span id="bs-rev" class="backstage-dim"></span></h2>
+      <div id="bs-story" class="backstage-list"></div>
+    </section>
+
+    <!-- 分隔条：拖动改左右两栏宽度（键盘不可用，但宽度会存 localStorage）。 -->
+    <div class="bs-splitter" data-split="1" role="separator" aria-orientation="vertical"
+         aria-label="调整「前台剧情」与「后台动态」的宽度" tabindex="-1"></div>
+
+    <section class="backstage-col">
+      <h2>后台动态</h2>
+      <div id="bs-events" class="backstage-list"></div>
+    </section>
+
+    <div class="bs-splitter" data-split="2" role="separator" aria-orientation="vertical"
+         aria-label="调整「后台动态」与「当前状态」的宽度" tabindex="-1"></div>
+
+    <section class="backstage-col">
+      <h2>当前状态</h2>
+      <div id="bs-state" class="backstage-list"></div>
+
+      <form id="bs-note" class="bs-note" autocomplete="off">
+        <h3>投一条提醒</h3>
+        <p class="bs-note-hint">只进观察面（第五列「待确认事件」）：<b>不进说书人上下文、不暂停剧情</b>。</p>
+        <div class="bs-note-row">
+          <select id="bs-note-severity" aria-label="严重度">
+            <option value="info">提示</option>
+            <option value="warn">警告</option>
+          </select>
+          <button type="submit" id="bs-note-send">发送</button>
+        </div>
+        <textarea id="bs-note-text" rows="3" maxlength="500" placeholder="例如：Ella 上一幕不该知道钥匙在井里"></textarea>
+        <span id="bs-note-status" class="bs-note-status" role="status"></span>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="js/backstage.js"></script>
+</body>
+</html>

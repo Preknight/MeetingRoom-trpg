@@ -1,0 +1,24 @@
+{
+  "seed": 3,
+  "rounds": 0,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15, "speedFeet": 30 },
+    { "id": "vecna", "name": "Vecna", "side": "foe", "dexterityModifier": 2, "initiative": 10, "speedFeet": 30 }
+  ],
+  "sheets": {
+    "ella": { "characterId": "ella", "maxHp": 30, "currentHp": 30, "tempHp": 0 },
+    "vecna": { "characterId": "vecna", "maxHp": 12, "currentHp": 12, "tempHp": 0 }
+  },
+  "steps": [
+    { "kind": "help", "actorId": "ella", "helpTargetId": "vecna", "reason": "指点弱点" },
+    { "advanceTurn": true },
+    { "kind": "attack", "actorId": "vecna", "targetId": "ella", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5,
+      "distanceFeet": 5, "reason": "第一次攻击（Help 优势）" },
+    { "advanceTurn": true },
+    { "advanceTurn": true },
+    { "kind": "attack", "actorId": "vecna", "targetId": "ella", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5,
+      "distanceFeet": 5, "reason": "第二次攻击（Help 已用掉）" }
+  ]
+}

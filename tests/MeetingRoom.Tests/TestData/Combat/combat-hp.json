@@ -1,0 +1,18 @@
+{
+  "seed": 4,
+  "rounds": 1,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15 },
+    { "id": "vecna", "name": "Vecna", "side": "foe", "dexterityModifier": 2, "initiative": 10 }
+  ],
+  "sheets": {
+    "vecna": { "characterId": "vecna", "maxHp": 12, "currentHp": 12, "tempHp": 0 },
+    "ella": { "characterId": "ella", "maxHp": 30, "currentHp": 30, "tempHp": 0 }
+  },
+  "actions": [
+    { "actorId": "ella", "targetId": "vecna", "kind": "attack", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5, "reason": "第一击" },
+    { "actorId": "ella", "targetId": "vecna", "kind": "attack", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5, "reason": "第二击" }
+  ]
+}

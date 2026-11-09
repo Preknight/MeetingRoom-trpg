@@ -1,0 +1,6 @@
+{
+  "characterId": "broken",
+  "currentHp": 10,
+  "abilities": { "strength": 10 },
+  "proficiencyBonus": 2
+}

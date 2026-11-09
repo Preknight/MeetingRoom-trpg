@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    硬约束（实现步骤 §1）：不引用任何 ASP.NET Core 包，保证可用 dotnet test 直接驱动。
+    依赖方向：Core → Agent（Core 的与会者持有 AgentSession）；Agent 不引用 Core，见架构图设计文档 §三。
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.10.0" />
+  </ItemGroup>
+
+</Project>

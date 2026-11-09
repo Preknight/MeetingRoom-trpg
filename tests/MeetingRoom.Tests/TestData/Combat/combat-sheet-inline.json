@@ -1,0 +1,68 @@
+{
+  "seed": 4,
+  "rounds": 0,
+  "combatants": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "side": "party",
+      "dexterityModifier": 3,
+      "initiative": 15,
+      "speedFeet": 30,
+      "sheet": {
+        "characterId": "ella",
+        "maxHp": 30,
+        "currentHp": 30,
+        "tempHp": 0,
+        "armorClass": 15,
+        "abilities": {
+          "strength": 10,
+          "dexterity": 16,
+          "constitution": 14,
+          "intelligence": 12,
+          "wisdom": 13,
+          "charisma": 10
+        },
+        "proficiencyBonus": 2
+      }
+    },
+    {
+      "id": "vecna",
+      "name": "Vecna",
+      "side": "foe",
+      "dexterityModifier": 2,
+      "initiative": 10,
+      "speedFeet": 30,
+      "sheet": {
+        "characterId": "vecna",
+        "maxHp": 12,
+        "currentHp": 12,
+        "tempHp": 0,
+        "armorClass": 5,
+        "abilities": {
+          "strength": 8,
+          "dexterity": 14,
+          "constitution": 12,
+          "intelligence": 18,
+          "wisdom": 12,
+          "charisma": 16
+        },
+        "proficiencyBonus": 2
+      }
+    }
+  ],
+  "steps": [
+    {
+      "kind": "attack",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "weaponId": "Longsword|XPHB",
+      "attackBonus": 5,
+      "damageBonus": 3,
+      "damageType": "slashing",
+      "targetArmorClass": 5,
+      "distanceFeet": 5,
+      "reason": "带数值表的攻击"
+    }
+  ]
+}

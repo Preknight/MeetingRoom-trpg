@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meeting Room</title>
+  <link rel="stylesheet" href="app.css">
+  <!-- 空 favicon：避免 /favicon.ico 404（F7-⑥）。 -->
+  <link rel="icon" href="data:,">
+</head>
+
+<body>
+  <header class="topbar">
+    <h1>Meeting Room</h1>
+    <span id="connection" class="conn" data-state="connecting">连接中…</span>
+    <!-- 当前工作空间 / 会话：新建入口收进最左侧那一列之后，顶栏只负责"我在哪"（设计方案 §15.3）。 -->
+    <span class="pill" id="workspace-pill" title="当前工作空间 / 会话">未打开工作空间</span>
+    <span class="pill" id="mode-pill" data-mode="roleplay">叙事模式</span>
+    <span class="pill" id="meeting-status" hidden>—</span>
+    <span class="pill" id="material-version" hidden>资料版本 0</span>
+    <span class="pill" id="roleplay-status">—</span>
+    <span class="pill" id="story-revision">剧情进度 0</span>
+    <!-- 等用户拍板期间必须看得见：一轮会一直挂到答复或超时，界面不能让人以为卡住了（§14.4） -->
+    <span class="pill pill--waiting" id="waiting-pill" hidden>正在等你拍板</span>
+    <!-- 结束会话（真机 B）：以前只有 API，叙事 paused 时用户只能调接口或重启进程。 -->
+    <button type="button" class="pill" id="end-session"
+            title="结束当前会话（叙事 / 会议都适用；结束后这一场不能再继续）">结束会话</button>
+    <!-- 列开关：显示 / 折叠各列（宽度与折叠状态都存在 localStorage，见 panel-layout.js） -->
+    <span class="col-toggles" id="col-toggles" title="显示 / 折叠各列"></span>
+    <!-- 地图编辑器入口（M5）：**新标签**打开——切走再回来不该丢当前会话与流式状态。 -->
+    <a class="pill pill--link" id="map-editor-link" href="/map-editor" target="_blank" rel="noopener"
+       title="打开地图编辑器（新标签；切走再回来不会丢当前会话）">地图</a>
+    <!-- 战斗条（F1）：数据来自 roleplay.state.combat；事件只负责触发重取快照，刷新后也能重建。 -->
+    <span class="combat-bar" id="combat-bar" hidden>
+      <span class="combat-round" id="combat-round">—</span>
+      <span class="combat-actor" id="combat-actor">—</span>
+      <span class="combat-order" id="combat-order"></span>
+      <button type="button" id="combat-end" title="结束当前战斗">结束战斗</button>
+    </span>
+    <button type="button" class="pill" id="combat-toggle" hidden title="手动切换战斗布局（战术板）">战术板</button>
+    <span id="notice" class="notice" hidden></span>
+  </header>
+
+  <!-- 后端警告（roleplay.warning 原文，可逐条关闭）：坏 sheet、战斗中被拒的收束… -->
+  <div class="warnings" id="warning-area" hidden></div>
+
+  <main class="workspace">
+    <!-- 第 1 列：侧栏（工作空间 / 会话）。两个添加按钮表达"工作空间有类型"（设计方案 §15.2 / §15.3）。 -->
+    <aside class="panel panel--sidebar" data-col="sidebar">
+      <div class="sidebar-head">
+        <h2>工作空间</h2>
+        <div class="sidebar-actions">
+          <button type="button" id="new-roleplay" title="新建一个叙事型工作空间，或在该工作空间里开一场叙事">＋ 新建叙事</button>
+        </div>
+        <div class="sidebar-actions">
+          <button type="button" id="open-workspace" title="打开磁盘上已有的工作空间；它已经有会话就切到最近一场">打开…</button>
+        </div>
+      </div>
+      <div class="col-body" id="sidebar-list"></div>
+      <div class="col-resizer" data-col="sidebar" title="拖动调整「工作空间」列的宽度"></div>
+    </aside>
+
+    <!-- 第 2 列：上段「已归档」（会议资料 / 世界观 + 工作空间归档区：角色卡 / 资料 / 世界书条目）
+         + 下段「待整理」（设计方案 §15.6）——归档后才进上下文，用户是唯一的归档者。 -->
+    <section class="col" data-col="archived">
+      <div class="panel panel--archived">
+        <h2 id="col1-title">已归档 · 世界观与场景</h2>
+        <div class="col-body" id="archived-body">
+          <div class="stack" id="materials-list" hidden></div>
+          <!-- 叙事模式：世界观 / 场景资料，数据来自 roleplay.state -->
+          <div class="stack" id="worldview-list"></div>
+          <!-- 工作空间归档区：跨会话共享（§15.2） -->
+          <div class="stack" id="archived-list"></div>
+        </div>
+      </div>
+
+      <div class="row-resizer" data-row="archived" title="拖动调整「已归档 / 待整理」的高度"></div>
+
+      <div class="panel panel--drafts">
+        <h2 id="col1b-title">待整理</h2>
+        <div class="drafts-head">
+          <button type="button" id="drafts-edit" title="打开编辑页：增 / 改 / 删 / 归档">编辑</button>
+          <button type="button" id="drafts-add" title="新建一条待整理">＋ 添加</button>
+        </div>
+        <div class="col-body" id="drafts-list"></div>
+      </div>
+
+      <div class="col-resizer" data-col="archived" title="拖动调整「已归档 / 待整理」列的宽度"></div>
+    </section>
+
+    <!-- 第 3 列：讨论区（上 4/5）+ 指令区（下 1/5） -->
+    <section class="col" data-col="main">
+      <div class="main-split" id="main-split">
+        <div class="main-left">
+        <div class="panel panel--discussion">
+          <h2 id="col2-title">剧情</h2>
+          <div class="col-body" id="discussion-list"></div>
+        </div>
+        <div class="panel panel--composer">
+          <h2 id="col2b-title">导演指令</h2>
+
+          <!-- 交互浮层：待你拍板的事（设计文档 §14.3）——多问题分步，选项带一行说明，也可直接输入 -->
+          <div class="ask" id="ask-panel" hidden>
+            <header class="ask-head">
+              <span class="ask-kind" id="ask-kind">需要你拍板</span>
+              <span class="ask-step" id="ask-step"></span>
+            </header>
+            <div class="ask-prompt" id="ask-prompt"></div>
+            <div class="ask-options" id="ask-options"></div>
+            <div class="ask-foot">
+              <button type="button" id="ask-prev" hidden>上一个</button>
+              <button type="button" id="ask-next">下一个</button>
+              <button type="button" id="ask-submit">就这么定</button>
+              <button type="button" class="ask-skip" id="ask-skip">跳过</button>
+            </div>
+            <form class="ask-free" id="ask-free">
+              <input id="ask-free-input" type="text" placeholder="或者直接写你的答复…" autocomplete="off">
+              <button type="submit">就这么答</button>
+            </form>
+          </div>
+
+          <form id="composer" class="composer">
+            <input id="composer-input" type="text" placeholder="下指令或写旁白；括号里是不进剧情的元指令，如（让艾拉出场）" autocomplete="off">
+            <button type="submit">发送</button>
+            <button type="button" id="composer-broadcast" title="把这段内容作为补充材料发给所有与会者" hidden>补料</button>
+            <button type="button" id="composer-start" hidden>开始会议</button>
+            <button type="button" id="composer-pause" disabled>暂停</button>
+          </form>
+        </div>
+        </div>
+
+        <!-- 右栏：战术板（F1）——只在战斗模式下显示，非战斗时 main 回到单列 -->
+        <aside class="main-right" id="tactical-board" hidden>
+          <h2>战术板</h2>
+          <div class="col-body" id="tactical-body"></div>
+          <div class="main-split-resizer" data-main-split title="拖动调整左右比例"></div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 第 4 列：待确认事件 + 导演记录 -->
+    <section class="col" data-col="review">
+      <div class="panel panel--review">
+        <h2 id="col3-title">待确认事件</h2>
+        <div class="col-body" id="review-list"></div>
+      </div>
+      <div class="panel panel--host">
+        <h2 id="col3b-title">导演记录</h2>
+        <div class="col-body" id="host-log"></div>
+      </div>
+
+      <!-- 把手在被调列的**左边缘**：向左拖 = 这一列变宽（data-edge 决定拖动方向取反）。 -->
+      <div class="col-resizer col-resizer--left" data-col="review" data-edge="left"
+           title="拖动调整「待审批 / 记录」列的宽度（向左拖变宽）"></div>
+    </section>
+
+    <!-- 第 5 列 + 第 6 列：同一个滚动容器 → 行对齐、滚动同步 -->
+    <section class="rail" data-col="rail">
+      <div class="rail-head">
+        <h2 id="col4-title">在场角色</h2>
+        <h2 id="col5-title">后台记录（仅显示，Agent 不可读）</h2>
+      </div>
+      <div class="rail-body" id="rail-body"></div>
+      <!-- 「与会者」的把手贴 rail 的最左边缘（review 与 rail 之间），同样向左拖变宽。 -->
+      <div class="col-resizer col-resizer--left col-resizer--rail" data-col="rail-l" data-edge="left"
+           title="拖动调整「与会者」列的宽度（向左拖变宽；右侧「后台记录」自动占余量）"></div>
+    </section>
+  </main>
+
+  <!-- ---------- 模板 ---------- -->
+
+  <template id="tpl-workspace">
+    <article class="ws" data-active="false">
+      <button type="button" class="ws-head">
+        <span class="ws-caret">▸</span>
+        <span class="ws-name"></span>
+        <span class="ws-kind"></span>
+      </button>
+      <div class="ws-path"></div>
+      <div class="ws-foot">
+        <span class="ws-count"></span>
+        <button type="button" class="ws-forget" title="从清单里移除（磁盘上的东西一个都不动）">移除</button>
+      </div>
+      <div class="ws-sessions"></div>
+    </article>
+  </template>
+
+  <template id="tpl-session">
+    <div class="sess" data-active="false">
+      <button type="button" class="sess-open">
+        <span class="sess-title"></span>
+        <span class="sess-meta"></span>
+      </button>
+      <button type="button" class="sess-delete" title="删掉这场会话（连同它的目录，不可恢复）">删除</button>
+    </div>
+  </template>
+
+  <template id="tpl-material">
+    <article class="card" data-status="">
+      <div class="card-title"></div>
+      <div class="card-summary"></div>
+      <div class="card-foot">
+        <span class="card-meta"></span>
+        <a class="card-link" href="#" rel="noopener">正文</a>
+      </div>
+      <div class="card-actions"></div>
+    </article>
+  </template>
+
+  <template id="tpl-message">
+    <article class="message">
+      <span class="message-author"></span>
+      <div class="message-text"></div>
+    </article>
+  </template>
+
+  <!-- F6：检定卡（暗骰对 DM 照显数值，但加徽标并弱化卡面） -->
+  <template id="tpl-check">
+    <article class="check-card">
+      <header class="check-head">
+        <span class="check-title"></span>
+        <span class="check-secret" hidden>暗骰</span>
+        <span class="check-source" hidden></span>
+      </header>
+      <div class="check-body">
+        <span class="check-formula"></span>
+        <span class="check-dc"></span>
+        <span class="check-verdict"></span>
+        <span class="check-modifier-source" hidden></span>
+      </div>
+    </article>
+  </template>
+
+  <!-- F6：骰子卡（dice_roll 手搓的也照显） -->
+  <template id="tpl-roll">
+    <article class="roll-card">
+      <header class="roll-head"><span class="roll-title"></span></header>
+      <div class="roll-body">
+        <span class="roll-expression"></span>
+        <span class="roll-total"></span>
+        <span class="roll-dc"></span>
+      </div>
+    </article>
+  </template>
+
+  <template id="tpl-rail-participant">
+    <div class="rail-cell rail-cell--participant" data-status="">
+      <div class="rail-name"><span class="status"></span><span class="rail-name-text"></span></div>
+      <div class="rail-desc"></div>
+      <div class="rail-cache"></div>
+    </div>
+  </template>
+
+  <template id="tpl-rail-backstage">
+    <div class="rail-cell rail-cell--backstage"></div>
+  </template>
+
+  <template id="tpl-decision">
+    <article class="decision">
+      <!-- 来源徽标（批 2）：文字「人」/「AI」+ 色条线型双重区分，灰度视图下也能分辨。 -->
+      <div class="decision-head"><span class="decision-origin"></span><span class="decision-action"></span></div>
+      <div class="decision-reason"></div>
+      <div class="decision-actions"></div>
+    </article>
+  </template>
+
+  <template id="tpl-dir">
+    <button type="button" class="picker-dir">
+      <span class="picker-dir-name"></span>
+      <span class="picker-dir-tag"></span>
+    </button>
+  </template>
+
+  <template id="tpl-draft">
+    <div class="draft" data-kind="" data-active="false">
+      <button type="button" class="draft-open">
+        <span class="draft-title"></span>
+        <span class="draft-kind"></span>
+      </button>
+      <button type="button" class="draft-archive" title="归档（归档后进已归档，界面上不再可改）">归档</button>
+    </div>
+  </template>
+
+  <template id="tpl-archived">
+    <div class="archived" data-kind="">
+      <span class="archived-title"></span>
+      <span class="archived-kind"></span>
+      <a class="archived-view" href="#" rel="noopener">正文</a>
+      <button type="button" class="archived-unarchive" title="退回待整理（要改就得先撤销归档）">撤销归档</button>
+    </div>
+  </template>
+
+  <!-- ---------- 浮层 ---------- -->
+
+  <!-- 资料正文：只在点击"正文"时拉取，不进任何 Agent 的上下文（设计文档 §5.3） -->
+  <aside id="material-viewer" class="viewer" hidden>
+    <div class="viewer-panel">
+      <header class="viewer-head">
+        <strong class="viewer-title"></strong>
+        <button type="button" class="viewer-close" aria-label="关闭">×</button>
+      </header>
+      <div class="viewer-path"></div>
+      <pre class="viewer-body"></pre>
+    </div>
+  </aside>
+
+  <!-- 新建叙事：填设定、选在场角色；工作空间在这里选（§15.4）。 -->
+  <aside id="session-start" class="viewer" hidden>
+    <div class="viewer-panel">
+      <header class="viewer-head">
+        <strong class="viewer-title" id="session-start-title">新建叙事</strong>
+        <button type="button" class="viewer-close" id="session-start-close" aria-label="关闭">×</button>
+      </header>
+      <div class="viewer-path" id="session-start-hint"></div>
+
+      <section class="ws-picker">
+        <div class="ws-picker-line">
+          <span class="ws-picker-label">工作空间</span>
+          <strong id="session-workspace-name">未选择</strong>
+        </div>
+        <div class="ws-picker-path" id="session-workspace-path"></div>
+        <div class="ws-picker-foot">
+          <button type="button" id="session-pick-path">选择目录…</button>
+          <span class="ws-picker-note">叙事型工作空间只开叙事（创建时就定）</span>
+        </div>
+      </section>
+
+      <form id="session-form" class="roleplay-form">
+        <div id="session-roleplay-fields">
+          <label for="session-worldview">世界观（一段话）</label>
+          <textarea id="session-worldview" rows="4" placeholder="例：一座靠海的小镇，灯塔在夜里亮着。"></textarea>
+
+          <label for="session-situation">开场情境（此刻的局面）</label>
+          <textarea id="session-situation" rows="3" placeholder="例：暴雨夜，灯塔看守人倒在塔下。"></textarea>
+
+          <label for="session-user-role">你的身份（可选，例如：本场导演 / 旁白）</label>
+          <input id="session-user-role" type="text" placeholder="例：本场导演，兼旁白">
+
+          <label>在场角色（全部不勾 = 全部在场）</label>
+          <div class="cast-picker">
+            <div class="cast-picker-bar">
+              <button type="button" id="cast-all">全选</button>
+              <button type="button" id="cast-none">清空</button>
+              <span class="cast-picker-note" id="cast-note"></span>
+            </div>
+            <div class="cast-picker-list" id="session-cast-list" role="group" aria-label="在场角色"></div>
+          </div>
+
+          <label for="session-narrator">说书人的角色 id（留空 = 用默认的 narrator）</label>
+          <input id="session-narrator" type="text" placeholder="例：narrator">
+        </div>
+
+        <div class="roleplay-form-foot">
+          <button type="submit" id="session-submit">开始这一场</button>
+          <span class="roleplay-note" id="session-note"></span>
+        </div>
+      </form>
+    </div>
+  </aside>
+
+  <!-- 选目录对话框（§15.4）：目录浏览为主，手输路径是逃生口；"新建子目录"直接建成工作空间。 -->
+  <aside id="path-picker" class="viewer" hidden>
+    <div class="viewer-panel">
+      <header class="viewer-head">
+        <strong class="viewer-title">选择工作空间目录</strong>
+        <button type="button" class="viewer-close" id="picker-close" aria-label="关闭">×</button>
+      </header>
+      <div class="viewer-path" id="picker-hint">
+        选一个目录作为工作空间：已经是工作空间的直接打开（不覆盖），空目录会新建骨架。
+      </div>
+
+      <form id="picker-go" class="picker-path">
+        <input id="picker-path" type="text" placeholder="也可以直接粘贴一个路径（网络盘 / 超长路径）">
+        <button type="submit">前往</button>
+        <button type="button" id="picker-up">上一级</button>
+      </form>
+
+      <div class="picker-sys">
+        <button type="button" id="picker-system">用系统对话框选…</button>
+        <span class="roleplay-note">弹出 Windows 的目录选择窗（由服务进程弹，与你同一个桌面会话）</span>
+      </div>
+
+      <div class="col-body" id="picker-list"></div>
+
+      <div class="picker-foot">
+        <input id="picker-new-name" type="text" placeholder="新子目录名">
+        <button type="button" id="picker-create">新建子目录并选中</button>
+        <button type="button" id="picker-select">选中当前目录</button>
+      </div>
+      <div class="roleplay-note" id="picker-note"></div>
+    </div>
+  </aside>
+
+  <!-- 引导页 = 待整理资料的通用编辑页（设计方案 §15.5）：**引导只是它的第一次打开**。
+       左：待整理（增 / 改 / 删 / 归档）+ 导入；右：表单（角色卡用字段，资料 / 世界书用标题 + 正文）+ 已归档只读列表。 -->
+  <aside id="drafts-editor" class="viewer" hidden>
+    <div class="viewer-panel viewer-panel--wide">
+      <header class="viewer-head">
+        <strong class="viewer-title" id="editor-title">整理资料</strong>
+        <button type="button" class="viewer-close" id="editor-close" aria-label="关闭">×</button>
+      </header>
+      <div class="viewer-path" id="editor-hint"></div>
+
+      <div class="editor-body">
+        <div class="editor-col">
+          <div class="editor-head">
+            <span>待整理（可改）</span>
+            <div class="editor-actions">
+              <button type="button" id="editor-new-role">＋ 角色卡</button>
+              <button type="button" id="editor-new-material">＋ 资料</button>
+              <button type="button" id="editor-new-worldbook">＋ 世界书条目</button>
+              <button type="button" id="editor-import-toggle">导入…</button>
+            </div>
+          </div>
+
+          <div class="editor-import" id="editor-import-panel" hidden>
+            <div class="editor-note-line">
+              导入 = 把工作空间<b>以外</b>的文件（或目录）复制进来，<b>直接归档</b>——
+              它被当作外部已经编辑好的成品，界面上不提供编辑（要改先撤销归档）。
+            </div>
+            <label for="editor-import-kind">类型</label>
+            <select id="editor-import-kind">
+              <option value="role">角色卡</option>
+              <option value="material">资料</option>
+              <option value="worldbook">世界书条目</option>
+            </select>
+            <label for="editor-import-path">路径（多个用分号隔开；文件或目录都行）</label>
+            <input id="editor-import-path" type="text" placeholder="例：C:/我的资料/侦探.md">
+            <div class="roleplay-form-foot">
+              <button type="button" id="editor-import-system">用系统对话框选文件…</button>
+              <button type="button" id="editor-import-run">导入</button>
+              <span class="roleplay-note" id="editor-import-note"></span>
+            </div>
+          </div>
+
+          <div class="col-body" id="editor-drafts"></div>
+        </div>
+
+        <div class="editor-col">
+          <div class="editor-head"><span>手写一条（落待整理，可改）</span></div>
+
+          <form id="editor-form" class="roleplay-form">
+            <div id="card-fields">
+              <label for="card-name">name（必填：卡片上显示的名字）</label>
+              <input id="card-name" type="text" placeholder="例：侦探">
+
+              <label for="card-id">id（留空 = 从 name 生成；它同时是文件名）</label>
+              <input id="card-id" type="text" placeholder="例：detective">
+
+              <label for="card-title">title（一句话职责）</label>
+              <input id="card-title" type="text" placeholder="例：查案与推理">
+
+              <label for="card-summary">summary（给模型看的摘要）</label>
+              <input id="card-summary" type="text" placeholder="例：老练的私家侦探，擅长从细节推断">
+
+              <label for="card-role">role</label>
+              <select id="card-role">
+                <option value="member">member（与会者 / NPC）</option>
+                <option value="host">host（主持人）</option>
+              </select>
+
+              <label for="card-model">model（留空 = 用全局配置）</label>
+              <input id="card-model" type="text" placeholder="例：deepseek-chat">
+
+              <label for="card-effort">effort（留空 = 用全局配置）</label>
+              <input id="card-effort" type="text" placeholder="例：high">
+
+              <label for="card-tools">allowedTools（逗号分隔；工具集不按角色裁剪，这里只供工具内判权）</label>
+              <input id="card-tools" type="text" placeholder="例：read_material, submit_material">
+
+              <label class="editor-check"><input id="card-readonly" type="checkbox"> readOnly（不给写权限）</label>
+            </div>
+
+            <div id="plain-fields">
+              <label for="editor-title-input">标题</label>
+              <input id="editor-title-input" type="text" placeholder="例：定价方案要点">
+            </div>
+
+            <label for="editor-body">正文（Markdown；角色卡这里是背景知识 / 职责 / 行为准则）</label>
+            <textarea id="editor-body" rows="9" placeholder="正文…"></textarea>
+
+            <div class="roleplay-form-foot">
+              <button type="submit" id="editor-save">保存到待整理</button>
+              <button type="button" id="editor-archive">保存并归档</button>
+              <button type="button" id="editor-delete" disabled>删掉这条</button>
+              <span class="roleplay-note" id="editor-note"></span>
+            </div>
+          </form>
+
+          <div class="editor-head"><span>已归档（只读）</span></div>
+          <div class="col-body" id="editor-archived"></div>
+        </div>
+      </div>
+
+      <div class="editor-foot">
+        <button type="button" id="editor-skip" hidden>跳过，先进主界面</button>
+      </div>
+    </div>
+  </aside>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+
+</html>

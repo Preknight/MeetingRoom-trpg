@@ -1,0 +1,131 @@
+{
+  "id": "map-view00000001",
+  "name": "出图测试图",
+  "mode": "sketch",
+  "image": null,
+  "grid": {
+    "dpi": 100,
+    "offsetX": 0,
+    "offsetY": 0,
+    "gridType": "square",
+    "scale": 5
+  },
+  "rooms": [
+    {
+      "id": "r1",
+      "name": "储藏室",
+      "polygon": [
+        [
+          100,
+          100
+        ],
+        [
+          900,
+          100
+        ],
+        [
+          900,
+          900
+        ],
+        [
+          100,
+          900
+        ]
+      ],
+      "light": "dim",
+      "note": ""
+    }
+  ],
+  "walls": [
+    {
+      "id": "w1",
+      "points": [
+        [
+          100,
+          500
+        ],
+        [
+          900,
+          500
+        ]
+      ],
+      "kind": "wall",
+      "open": false
+    }
+  ],
+  "tokens": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "x": 300,
+      "y": 300,
+      "visible": true
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "name": "油腻术",
+      "kind": "spell",
+      "shape": {
+        "type": "circle",
+        "center": [
+          400,
+          400
+        ],
+        "radiusCells": 1
+      },
+      "color": "#c9a227",
+      "note": "",
+      "visible": true
+    }
+  ],
+  "fog": {
+    "enabled": true,
+    "explored": [
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        3,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        3,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        3,
+        3
+      ]
+    ],
+    "visible": [
+      [
+        2,
+        2
+      ]
+    ]
+  },
+  "updatedAt": 0
+}

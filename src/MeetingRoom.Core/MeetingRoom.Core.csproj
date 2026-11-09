@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 硬约束（实现步骤 §1）：不引用任何 ASP.NET Core 包，保证可用 dotnet test 直接驱动。 -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" Version="10.10.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.5" />
+  </ItemGroup>
+
+  <!-- 依赖方向 Core → Agent：与会者运行时（AgentSession / step 循环）在内核之下。 -->
+  <ItemGroup>
+    <ProjectReference Include="..\MeetingRoom.Agent\MeetingRoom.Agent.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 测试要盯住内部装配接缝：共享节 / 私有节的切分是世界状态保密性的落点（§11.4-3）。 -->
+    <InternalsVisibleTo Include="MeetingRoom.Tests" />
+    <!-- M8b 补验：probe-vision 要直接断言 BuildMapImages 的内部行为（说书人拿 dm 图 / 角色拿 player 图）。 -->
+    <InternalsVisibleTo Include="MeetingRoom.Host" />
+  </ItemGroup>
+</Project>

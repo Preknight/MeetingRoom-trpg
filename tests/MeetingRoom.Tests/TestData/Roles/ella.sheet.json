@@ -1,0 +1,13 @@
+{
+  "characterId": "ella",
+  "maxHp": 30,
+  "currentHp": 30,
+  "tempHp": 0,
+  "armorClass": 15,
+  "abilities": {
+    "strength": 10, "dexterity": 16, "constitution": 14,
+    "intelligence": 12, "wisdom": 13, "charisma": 10
+  },
+  "proficiencyBonus": 2,
+  "skills": { "perception": 5, "insight": 3 }
+}

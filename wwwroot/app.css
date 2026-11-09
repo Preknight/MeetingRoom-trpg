@@ -1,0 +1,2336 @@
+/* Meeting Room · 侧栏 + 五列骨架（设计文档 §9.1，改版见设计方案 §15.3）。
+   列宽：240px（侧栏）| 240px（资料）| 1fr（讨论 / 剧情）| 260px（待审批 + 记录）| 200px + 200px（与会者 + 后台记录）；
+   第 5、6 列同处一个滚动容器，行高天然一致。
+   第 5 列从原来的 1fr 收成固定窄列，腾出的横向空间给第 3 列（讨论区 / 剧情最需要宽度）。 */
+
+:root {
+  color-scheme: light dark;
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --border: #d8dde4;
+  --text: #1b1f24;
+  --muted: #6b7280;
+  --accent: #2f6feb;
+  --idle: #16a34a;
+  --queued: #6b7280;
+  --thinking: #d97706;
+  --reading: #2563eb;
+  --writing: #7c3aed;
+  --waiting: #db2777;
+  --interrupted: #dc2626;
+  --failed: #991b1b;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16181c;
+    --panel: #1e2126;
+    --border: #2f343c;
+    --text: #e6e8eb;
+    --muted: #9aa3af;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  display: grid;
+  /* 三行：顶栏 / 警告区 / 主区。警告区是 F1 加的（`#warning-area`），
+     原来只写了两行 → main 落到隐式行、警告区被压成 6px 并被 main 盖住（F7-③）。 */
+  grid-template-rows: auto auto minmax(0, 1fr);
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.6 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h1 { font-size: 15px; margin: 0 8px 0 0; letter-spacing: .02em; }
+
+.conn { font-size: 12px; color: var(--muted); }
+.conn[data-state="open"] { color: var(--idle); }
+.conn[data-state="connecting"] { color: var(--thinking); }
+.conn[data-state="reconnecting"] { color: var(--interrupted); }
+
+.pill {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 10px;
+}
+
+/* 当前工作空间 / 会话可能很长：截断而不是把顶栏挤成两行。 */
+#workspace-pill {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--failed);
+}
+
+/* ---------- 侧栏 + 五列工作区 ---------- */
+
+.workspace {
+  display: grid;
+  /* 固定落在 body 的第 3 行（`auto auto minmax(0, 1fr)` 的最后一行）。
+     不写这一条，`#warning-area` 一旦 `hidden`（display:none）就不占位、自动放置会把 main
+     塞进**第 2 行**，而本该给 main 的 `1fr` 行空着——窗口越高，底部空白越大（§26.8 A）。 */
+  grid-row: 3;
+  /* 六列：侧栏 | 已归档 | 讨论（剧情）| 待审批 + 记录 | 与会者 | 后台记录。
+     两侧是"可收缩的固定宽"：小窗口按档位收紧（见文件末尾的媒体查询），
+     主列始终拿剩下的空间——否则窄窗口里它会被挤成一条竖排的缝。 */
+  grid-template-columns: 240px 240px minmax(0, 1fr) 260px 200px 200px;
+  /* 行也要显式给 1fr：不写的话六列都落进**隐式 auto 行**，高度只等于内容，
+     `align-items: stretch` 在 auto 行上拉不出高度（第二层原因，两层都要修）。 */
+  grid-template-rows: minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  min-height: 0;
+}
+
+/* grid item 默认 min-width:auto：内容一宽就把列撑开，甚至把别列挤没。
+   position:relative 是给拖动分隔条（.col-resizer）当定位基准的。 */
+.workspace > * { min-width: 0; position: relative; }
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+}
+
+/* 第 2 列：讨论区 4/5 + 指令区 1/5；第 3 列：待审批 3/5 + 主持人记录 2/5。 */
+.panel--discussion { flex: 4; }
+.panel--composer { flex: 1; }
+.panel--review { flex: 3; }
+.panel--host { flex: 2; }
+
+.panel h2,
+.rail h2 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+
+.col-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* hidden 必须压过上面的 display:flex：第 2 列在两种模式下各有一个 col-body，靠 hidden 互斥显示。 */
+.col-body[hidden] { display: none; }
+
+/* ---------- 资料卡（第 2 列） ---------- */
+
+.card {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--queued);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.card-title { font-weight: 600; }
+
+.card-summary {
+  color: var(--muted);
+  font-size: 12px;
+  /* 摘要按容器宽度截断，完整内容在 title 属性里（设计文档 §5.3）。 */
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 地图卡（第 1 列，V1）：它是事实清单，不截断、保留换行——状态行被截掉等于没显示。 */
+.card-summary--lines {
+  display: block;
+  -webkit-line-clamp: none;
+  white-space: pre-line;
+  overflow: visible;
+}
+
+.card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.card-link { color: var(--accent); text-decoration: none; }
+
+.card[data-status="draft"],
+.card[data-status="host_review"] { border-left-color: var(--thinking); }
+.card[data-status="user_review"] { border-left-color: var(--reading); }
+.card[data-status="adopted"] { border-left-color: var(--idle); }
+.card[data-status="rejected"] { border-left-color: var(--interrupted); }
+.card[data-status="parked"] { border-left-color: var(--queued); }
+
+/* ---------- 讨论区（第 3 列上） ---------- */
+
+.message { border-left: 2px solid var(--border); padding-left: 8px; }
+.message-author { font-size: 12px; color: var(--accent); }
+.message-text { white-space: pre-wrap; }
+
+.message--draft { opacity: .75; }
+.message--draft .message-text::after {
+  content: "▌";
+  color: var(--thinking);
+  animation: blink 1s steps(2, start) infinite;
+}
+
+@keyframes blink { to { visibility: hidden; } }
+
+/* ---------- 指令区（第 3 列下） ---------- */
+
+.composer { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+
+.composer input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.composer button {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.composer button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- 主持人记录（第 4 列下） ---------- */
+
+/* 待确认事件的来源区分（批 2）：线型 + 徽标文字 + 颜色三重编码，
+   灰度下靠"双线 vs 单线"和「人」/「AI」两个字仍能分辨（不能只靠颜色）。 */
+.decision { border-left: 2px solid var(--waiting); padding-left: 8px; }
+.decision[data-origin="human"] { border-left: 4px double #d29922; background: rgba(210, 153, 34, 0.06); }
+.decision[data-origin="ai"] { border-left: 2px solid var(--waiting); }
+.decision-head { display: flex; align-items: center; gap: 6px; }
+.decision-origin {
+  flex: none;
+  font-size: 10px;
+  line-height: 1.4;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.decision[data-origin="human"] .decision-origin { color: #d29922; }
+.decision[data-origin="human"] .decision-action { color: #d29922; }
+.decision[data-origin="ai"] .decision-origin { color: var(--muted); }
+.decision-action { font-size: 12px; color: var(--waiting); }
+.decision-reason { color: var(--muted); font-size: 12px; white-space: pre-line; }
+
+.empty { color: var(--muted); font-size: 12px; }
+
+/* ---------- 第 5 + 6 列：与会者与后台记录 ---------- */
+
+.rail {
+  grid-column: 5 / 7;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+}
+
+.rail-head,
+.rail-body {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.rail-head { padding-bottom: 6px; }
+
+/* 唯一滚动容器：与会者行与后台记录行天然等高、滚动同步（实现步骤 3.3）。 */
+.rail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  align-content: start;
+}
+
+/* `[hidden]` 的 UA 规则是 `display: none`，但优先级低于作者的 `display: grid`——
+   不显式写一遍，收起「与会者」时内容照样渲染（用户截图里掉到页面左下就是这个）。 */
+.rail-body[hidden] { display: none; }
+
+/* 折叠 `rail-l` / `rail-r`（§26.8 B）：`rail-body` 里交替挂着两种格子（与会者 / 后台），
+   折叠哪一列就收哪一类格子；标题（`.rail-head` 的两个 h2）由 panel-layout.js 置 hidden。
+   `.rail` 自身是 `display: flex`，两列都折时 UA 的 `[hidden]` 压不住它，必须显式写。 */
+.rail[hidden] { display: none; }
+.rail[data-rail-l="off"] .rail-body > .rail-cell--participant,
+.rail[data-rail-l="off"] .rail-body > .empty { display: none; }
+.rail[data-rail-r="off"] .rail-body > .rail-cell--backstage { display: none; }
+
+.rail-cell {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.rail-cell--participant { min-height: 60px; }
+
+.rail-cell--backstage {
+  max-height: 120px;
+  overflow-y: auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: pre-wrap;
+}
+
+.rail-name { display: flex; align-items: center; gap: 6px; font-weight: 600; }
+
+.rail-desc { font-size: 12px; color: var(--muted); }
+
+.status {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--queued);
+  flex: none;
+}
+
+.rail-cell--participant[data-status="idle"] .status { background: var(--idle); }
+.rail-cell--participant[data-status="queued"] .status { background: var(--queued); }
+.rail-cell--participant[data-status="thinking"] .status { background: var(--thinking); animation: pulse 1.2s infinite; }
+.rail-cell--participant[data-status="reading"] .status { background: var(--reading); }
+.rail-cell--participant[data-status="writing"] .status { background: var(--writing); }
+.rail-cell--participant[data-status="waiting_approval"] .status { background: var(--waiting); }
+.rail-cell--participant[data-status="interrupted"] .status { background: var(--interrupted); }
+.rail-cell--participant[data-status="failed"] .status { background: var(--failed); }
+
+@keyframes pulse { 50% { opacity: .35; } }
+
+.backstage-entry { display: block; }
+.backstage-entry--tool { color: var(--reading); }
+.backstage-entry--interrupt { color: var(--thinking); }
+
+/* 空态提示跨两列 */
+.rail-body > .empty { grid-column: 1 / -1; }
+
+
+/* ---------- 资料正文查看器 ---------- */
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, .35);
+}
+
+/* hidden 属性必须压过 display: flex，否则查看器会一直挂着挡住第 6 列
+   （HTML 的 hidden 只是 UA 样式里的 display: none，任何显式 display 都会覆盖它）。 */
+.viewer[hidden] { display: none; }
+
+.viewer-panel {
+  width: min(560px, 92vw);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+}
+
+.viewer-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+.viewer-close {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.viewer-path { margin: 4px 0 8px; font-size: 12px; color: var(--muted); }
+
+.viewer-body {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  font: inherit;
+}
+
+/* ---------- 待审批卡片上的用户终审按钮 ---------- */
+
+.card-actions { display: flex; gap: 6px; margin-top: 6px; }
+
+.card-actions button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.card-actions button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ---------- 与会者卡片上的缓存诊断（设计文档 §7.4） ---------- */
+
+.rail-cache {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- 正在生成的正文（第 6 列，设计文档 §9.1） ---------- */
+
+.backstage-entry--streaming {
+  color: var(--accent);
+  opacity: .85;
+}
+
+/* ---------- 模式标识（设计文档 §11.6） ---------- */
+
+.topbar-button {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.topbar-button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 叙事模式下让模式标识一眼可辨：颜色比文字更快。 */
+#mode-pill[data-mode="roleplay"] {
+  color: var(--writing);
+  border-color: var(--writing);
+}
+
+/* 浮层里的创建表单（复用查看器的面板骨架） */
+.roleplay-form {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+/* 标签必须独占一行：`<label>` 默认是 inline，之前没覆盖 →
+   标签、输入框、placeholder 全按 inline 流挤在一行，示例文字被推到右侧（r13 截图 2）。
+   输入框要显式撑满：inline-block 的默认宽度按 `size` 算，只有 176px。 */
+.roleplay-form label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.roleplay-form input,
+.roleplay-form textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+  overflow-wrap: anywhere;
+}
+
+.roleplay-form-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.roleplay-form-foot button {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.roleplay-note { font-size: 12px; color: var(--muted); }
+
+/* ---------- 待确认事件（第 4 列上，叙事模式） ---------- */
+
+.decision-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+
+/* 主持人记录里的条目没有按钮：空容器不该占位。 */
+.decision-actions:empty { display: none; }
+
+.decision-actions button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.decision-actions button:disabled { opacity: .5; cursor: not-allowed; }
+.decision-actions button.decision-skip { color: var(--muted); }
+
+/* 交互浮层：贴在指令区上方，用它自己的滚动条兜住高度，不遮挡别的列。 */
+.ask {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  max-height: 45vh;
+  overflow: auto;
+  border: 1px solid var(--writing);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--writing) 6%, transparent);
+}
+
+.pill--waiting { border-color: var(--writing); color: var(--writing); }
+
+.ask-head { display: flex; justify-content: space-between; font-size: 12px; }
+.ask-kind { color: var(--writing); }
+.ask-step { color: var(--muted); }
+.ask-prompt { font-size: 13px; white-space: pre-line; }
+.ask-options { display: flex; flex-direction: column; gap: 4px; }
+.ask-option { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 5px 8px; }
+.ask-option[data-selected='true'] { outline: 2px solid var(--writing); }
+.ask-option-desc { color: var(--muted); font-size: 12px; }
+.ask-foot { display: flex; flex-wrap: wrap; gap: 6px; }
+.ask-foot .ask-skip { color: var(--muted); }
+.ask-free { display: flex; gap: 6px; }
+.ask-free input { flex: 1; min-width: 0; }
+
+/* ---------- 导演自己的旁白 / 指令（第 3 列，叙事模式） ---------- */
+
+/* 与角色正文必须区分开：只换个竖线颜色的话，导演的话看起来就像某个角色的台词。
+   署名在 store 里固定为「导演」（见 roleplay.turn 与快照重建两处）。 */
+.message--director {
+  border-left: 2px solid var(--writing);
+  border-radius: 6px;
+  padding: 3px 8px;
+  background: color-mix(in srgb, var(--writing) 7%, transparent);
+  font-style: italic;
+}
+
+.message--director .message-author { color: var(--writing); }
+
+/* ---------- 第 1 列：侧栏（工作空间 / 会话，设计方案 §15.3） ---------- */
+
+.panel--sidebar { padding: 8px; }
+
+.sidebar-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+
+.sidebar-head h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .04em;
+}
+
+.sidebar-actions { display: flex; gap: 6px; }
+
+.sidebar-actions button {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidebar-actions button:hover { border-color: var(--accent); color: var(--accent); }
+.sidebar-actions button:disabled { opacity: .5; cursor: not-allowed; }
+
+.ws {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* 当前工作空间：左侧一条强调色，比加粗更省地方。 */
+.ws[data-active="true"] { border-left: 3px solid var(--accent); }
+
+.ws-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-caret { color: var(--muted); font-size: 10px; }
+.ws-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ws-kind {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 6px;
+  flex: none;
+}
+
+.ws[data-active="true"] .ws-kind { color: var(--accent); border-color: var(--accent); }
+
+.ws-path { font-size: 11px; color: var(--muted); word-break: break-all; }
+
+.ws-foot { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; color: var(--muted); }
+
+.ws-forget,
+.sess-delete {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  flex: none;
+}
+
+.ws-forget:hover { color: var(--thinking); border-color: var(--thinking); }
+.sess-delete:hover { color: var(--interrupted); border-color: var(--interrupted); }
+
+.ws-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 4px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+
+.ws-sessions[hidden] { display: none; }
+
+.sess { display: flex; align-items: center; gap: 4px; }
+
+.sess-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sess-open:hover { border-color: var(--border); }
+.sess[data-active="true"] .sess-open { border-color: var(--accent); }
+.sess-title { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess-meta { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- 新建会话浮层里的工作空间选择（§15.4） ---------- */
+
+.ws-picker {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.ws-picker-line { display: flex; align-items: baseline; gap: 6px; }
+.ws-picker-label { font-size: 12px; color: var(--muted); }
+.ws-picker-path { font-size: 11px; color: var(--muted); word-break: break-all; }
+.ws-picker-foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.ws-picker-foot button,
+.picker-path button,
+.picker-foot button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.ws-picker-foot button:hover,
+.picker-path button:hover,
+.picker-foot button:hover { border-color: var(--accent); color: var(--accent); }
+
+.ws-picker-note { font-size: 11px; color: var(--muted); }
+
+/* ---------- 选目录对话框（§15.4） ---------- */
+
+.picker-path { display: flex; gap: 6px; margin-bottom: 6px; }
+
+.picker-path input,
+.picker-foot input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+#picker-list { flex: 1; min-height: 0; overflow-y: auto; }
+
+.picker-dir {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker-dir:hover { border-color: var(--accent); }
+.picker-dir[data-workspace="true"] { border-left: 3px solid var(--idle); }
+.picker-dir-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-dir-tag { font-size: 11px; color: var(--muted); flex: none; }
+
+.picker-foot { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+
+/* ---------- 第 1 列两段：已归档 / 待整理（设计方案 §15.6） ---------- */
+
+/* 归档段里的小节（会议资料 / 世界观 / 工作空间归档区）：竖排、留间距 */
+.stack { display: flex; flex-direction: column; gap: 6px; }
+.stack[hidden] { display: none; }
+
+/* 下段「待整理」：不抢上段的地方，最多占半列，自己滚。
+   用户拖过横向分隔条之后去掉上限——上限会把拖出来的比例又压回去。 */
+.panel--drafts { flex: 1 1 auto; max-height: 55%; }
+
+/* 拖过分隔条：上段按固定高度、下段吃掉剩下的（高度写在第 2 列的 inline style 上）。 */
+.col[data-col="archived"][data-split="custom"] .panel--drafts { max-height: none; }
+
+/* 第 2 列的横向分隔条：视觉语言与 .col-resizer 一致，只是方向换成 row。 */
+.row-resizer {
+  position: relative;
+  flex: 0 0 auto;
+  height: 6px;
+  margin: -4px 0;
+  cursor: row-resize;
+  touch-action: none;
+  /* 细线居中，hover 变 accent——与竖分隔条同一套观感。 */
+  background: transparent;
+}
+
+.row-resizer::before {
+  content: '';
+  position: absolute;
+  inset: 2px 0 2px 0;
+  border-radius: 2px;
+  background: rgba(120, 140, 170, 0.35);
+}
+
+.row-resizer:hover::before,
+.row-resizer[data-dragging="true"]::before {
+  background: var(--accent, #6e91d2);
+}
+
+.drafts-head { display: flex; gap: 6px; margin-bottom: 6px; }
+
+.drafts-head button,
+.editor-actions button,
+.editor-foot button,
+.editor-import button {
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.drafts-head button:hover,
+.editor-actions button:hover { border-color: var(--accent); color: var(--accent); }
+
+.draft { display: flex; align-items: center; gap: 4px; }
+
+.draft-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.draft-open:hover { border-color: var(--border); }
+.draft[data-active="true"] .draft-open { border-color: var(--accent); }
+.draft-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.draft-kind { font-size: 11px; color: var(--muted); flex: none; }
+
+.draft-archive,
+.archived-unarchive {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  flex: none;
+}
+
+.draft-archive:hover { color: var(--idle); border-color: var(--idle); }
+.archived-unarchive:hover { color: var(--thinking); border-color: var(--thinking); }
+
+.archived {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.archived-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.archived-kind { font-size: 11px; color: var(--muted); flex: none; }
+.archived-view { font-size: 11px; color: var(--accent); text-decoration: none; flex: none; }
+
+/* ---------- 引导页 / 编辑页（设计方案 §15.5）---------- */
+
+.viewer-panel--wide { width: min(920px, 96vw); }
+
+.editor-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.editor-col { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.editor-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.editor-import {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.editor-import label { font-size: 12px; color: var(--muted); }
+
+.editor-import input,
+.editor-import select {
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.editor-note-line { font-size: 12px; color: var(--muted); }
+
+.editor-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+.editor-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+
+/* ---------- 窄窗口：把两侧收紧，把空间让给主列（讨论 / 剧情） ----------
+   放在文件末尾才压得住前面那些 .rail-* 规则（同优先级下后出现的胜）。 */
+
+@media (max-width: 1560px) {
+  .workspace { grid-template-columns: 200px 200px minmax(0, 1fr) 220px 160px 160px; }
+  .rail-head,
+  .rail-body { grid-template-columns: 160px minmax(0, 1fr); }
+}
+
+@media (max-width: 1240px) {
+  .workspace { grid-template-columns: 170px 170px minmax(0, 1fr) 190px 140px 140px; }
+  .rail-head,
+  .rail-body { grid-template-columns: 140px minmax(0, 1fr); }
+}
+
+/* hidden 必须压过 .ask 的 display:flex，否则交互浮层会一直挂在那里
+   （真机验证时抓到的：与 .viewer[hidden] / .col-body[hidden] 是同一个坑）。 */
+.ask[hidden] { display: none; }
+
+/* ---------- 列宽拖动 / 折叠（用户 2026-09 要求） ---------- */
+
+.col-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -5px;
+  width: 10px;
+  z-index: 5;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* 平时只是一条淡淡的竖线，悬停 / 拖动时才亮起来——不抢视线，但找得到。 */
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  top: 30%;
+  bottom: 30%;
+  left: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--border);
+}
+
+.col-resizer:hover::after,
+.col-resizer[data-dragging="true"]::after {
+  background: var(--accent);
+  top: 10%;
+  bottom: 10%;
+}
+
+/*
+ * 把手贴在被调列的**左边缘**（用户 2026-10-28 的决定）。
+ *
+ * 统一语义：**把手远离被调列 = 该列变大**。
+ * - 侧栏 / 已归档：把手在右边缘，向右拖 = 变大（原本就自洽，不动）；
+ * - 待审批 / 与会者：把手在左边缘，向左拖 = 变大，所以拖动公式要取反（`data-edge="left"`）。
+ *
+ * 上一版把「待审批」的把手放在右边缘、「与会者」的放在 rail-l 与 rail-r 之间，
+ * 视觉上像是调右边那列——位置改到左边缘之后这个歧义就没了，不再需要"调左列"浮标。
+ */
+.col-resizer--left { left: -5px; right: auto; }
+
+/* 「与会者」的把手贴 rail 的最左边缘（滚出 rail 的 padding-left）。 */
+.col-resizer--rail { left: -5px; right: auto; }
+
+/* 折叠掉的列：把手一起隐藏——否则它悬在空处，拖了也没有对应列。 */
+.col-resizer[hidden] { display: none; }
+
+.col-toggles { display: flex; gap: 4px; margin-left: auto; }
+
+.col-toggle {
+  padding: 1px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.col-toggle[data-on="true"] { color: var(--accent); border-color: var(--accent); }
+.col-toggle[data-on="false"] { color: var(--muted); border-style: dashed; }
+
+/* 折叠 = 整列不显示（grid 模板里那一列也去掉了，见 panel-layout.js） */
+.workspace > [hidden] { display: none; }
+
+.picker-sys { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+.picker-sys button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.picker-sys button:hover { border-color: var(--accent); color: var(--accent); }
+
+/* 两段里的条目都很窄（240px 还要放类型与按钮）：标题独占一行，类型与操作落到第二行，
+   否则标题会被 "角色卡 / 正文 / 撤销归档" 挤成一个字（真机截图里看到的）。 */
+.archived,
+.draft { flex-wrap: wrap; }
+
+.archived-title,
+.draft-title { flex: 1 1 100%; }
+
+/* ===== F1：战斗布局（战术板 + 战斗条 + 警告区） ===== */
+
+/* main 的左右分栏：默认单列（讨论 + 指令上下排）；战斗模式切成 55/45。
+   比例用 --main-split-left 控制，可拖，默认 55%。 */
+.main-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  height: 100%;
+}
+
+.main-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+}
+
+/* 非战斗模式：右栏不占位（hidden 已由 HTML 的 hidden 属性保证，这里只兜底）。 */
+.main-right[hidden] { display: none; }
+
+.main-right {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+}
+
+/*
+ * 两列还是单列，取决于**战术板是否可见**（`data-board`），不是"是否在战斗"（`data-combat`）。
+ *
+ * 上一版只看 `data-combat`：叙事模式把战术板改成常驻后，非战斗时 `data-combat=off`，
+ * 于是 `.main-left` 与 `.main-right` 被塞进**同一个 grid 列的两行**——导演指令横跨整宽、
+ * 战术板挤到下一行并与它重叠、整体高度被顶破（用户截图里那段重叠与底部空白都是这个）。
+ * `data-combat` 继续只管战斗相关的视觉，不再掺和布局。
+ */
+body[data-board="on"] .main-split {
+  grid-template-columns: minmax(0, var(--main-split-left, 55%)) minmax(0, 1fr);
+}
+
+/* 拖比例的手柄：贴在两栏之间。 */
+.main-split-resizer {
+  position: absolute;
+  left: -5px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: col-resize;
+  border-radius: 4px;
+}
+
+.main-split-resizer:hover,
+.main-split-resizer[data-dragging="true"] {
+  background: color-mix(in srgb, var(--accent, #6aa9ff) 35%, transparent);
+}
+
+/* 顶栏战斗条：轮次 / 当前行动者 / 先攻序 / 结束按钮。 */
+.combat-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.combat-bar[hidden] { display: none; }
+
+.combat-round { font-weight: 600; }
+
+.combat-actor { color: var(--accent, #6aa9ff); }
+
+.combat-order { color: var(--muted, #8a94a6); }
+
+.combat-bar button {
+  font-size: 12px;
+  padding: 1px 8px;
+}
+
+/* 后端警告区：原样显示 message，可逐条关闭。 */
+.warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 10px 0;
+}
+
+.warnings[hidden] { display: none; }
+
+.warning-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid #6b4b16;
+  border-radius: 6px;
+  background: #2a2213;
+  color: #f0d09a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.warning-item .warning-text { flex: 1 1 auto; }
+
+.warning-item .warning-close {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* 战术板里的战斗者清单。 */
+.tactical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.tactical-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.tactical-row[data-current="true"] {
+  border-color: var(--accent, #6aa9ff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent, #6aa9ff) 40%, transparent);
+}
+
+.tactical-row[data-status="dead"] { opacity: 0.5; text-decoration: line-through; }
+.tactical-row[data-status="dying"] { color: #f08a8a; }
+.tactical-row[data-status="stable"] { color: #d0b070; }
+
+.tactical-hp { font-variant-numeric: tabular-nums; }
+
+/* ===== F2：战术板（底图 + SVG 网格 + token） ===== */
+
+.board-host { min-height: 0; }
+
+.board {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 46vh;
+  background: #0d1117;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* 底图与 SVG 用同一套 contain 语义：叠在一起不会错位。 */
+.board-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.board-grid line {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1;
+}
+
+.board-token circle {
+  fill: rgba(106, 169, 255, 0.35);
+  stroke: rgba(106, 169, 255, 0.9);
+  stroke-width: 1.5;
+}
+
+.board-token-ring {
+  fill: none;
+  stroke: #ffd166;
+  stroke-width: 2.5;
+}
+
+.board-token-badge {
+  fill: #ffd166;
+  font-weight: 700;
+}
+
+.board-token-label {
+  fill: #e6edf3;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.65);
+  stroke-width: 0.4;
+}
+
+.board-hint {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #f0d09a;
+  font-size: 12px;
+}
+
+/* ===== F3：战术板交互（缩放/平移/测距/视角/高亮） ===== */
+
+/* 视口层：缩放与平移只改它的 transform，底图与 SVG 一起动。 */
+.board-viewport {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.board[data-dragging="true"] { cursor: grabbing; }
+
+/* 工具栏浮在左下角。 */
+.board-toolbar {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+
+.board-tool {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.55);
+  color: #e6edf3;
+  cursor: pointer;
+}
+
+.board-tool[data-on="true"] {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+
+/* 提示条右移，避免压住工具栏。 */
+.board-hint { left: auto; right: 8px; }
+
+/* 未登记 token：DM 视角用虚线描边（§4.4）。 */
+.board-token[data-unlisted="true"] circle {
+  stroke-dasharray: 4 3;
+  fill: rgba(255, 255, 255, 0.12);
+}
+
+.board-token--highlight circle {
+  stroke: #ffd166;
+  stroke-width: 2.5;
+  fill: rgba(255, 209, 102, 0.35);
+}
+
+.board-measure line {
+  stroke: #ffd166;
+  stroke-width: 2;
+}
+
+.board-measure circle {
+  fill: #ffd166;
+}
+
+.board-measure-label {
+  fill: #ffd166;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 0.4;
+}
+
+/* 与会者行被高亮（列表 → 地图反方向）：只加边框，不改尺寸。 */
+.rail-cell--highlight {
+  outline: 2px solid #ffd166;
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+/* ===== F4：浮层（标定 / token 摘要） ===== */
+
+.overlay-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.overlay-shell[hidden] { display: none; }
+
+.overlay-card {
+  width: min(520px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--fg, #e6edf3);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.overlay-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.overlay-hint {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--muted, #8a94a6);
+  line-height: 1.5;
+}
+
+.overlay-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.overlay-label { color: var(--muted, #8a94a6); }
+
+.overlay-field input {
+  width: 120px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #0d1117;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.overlay-value { font-variant-numeric: tabular-nums; }
+
+.overlay-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.overlay-button {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #161b22;
+  color: inherit;
+  cursor: pointer;
+}
+
+.overlay-button--primary {
+  border-color: var(--accent, #6aa9ff);
+  color: var(--accent, #6aa9ff);
+}
+
+.overlay-status {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #ffd166;
+  min-height: 1em;
+}
+
+/* 标定取点的标记（与测距分开一层）。 */
+.board-picks circle {
+  fill: rgba(255, 209, 102, 0.9);
+  stroke: rgba(0, 0, 0, 0.6);
+  stroke-width: 1;
+}
+
+/* ===== 编辑器：迷雾未保存时「保存」按钮高亮 ===== */
+
+/*
+ * 迷雾是手动保存的（信息闸门，误推给玩家代价大），所以必须有"还没存"的可见信号，
+ * 否则用户刷完就关页面，改动全丢还以为存过了。
+ */
+.editor-primary.is-dirty {
+  background: #b8860b;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.45);
+}
+
+/* ===== M9b：角色请求行（内联进剧情流） ===== */
+
+/*
+ * 请求是"我想做这个"，不是"我做了什么"——所以刻意做成旁注：
+ * 斜体、浅色、左侧一道强调线，没有头像也没有作者色块。
+ * 与正文的视觉差就是它的语义差：说书人可以不采纳。
+ */
+.story-request {
+  margin: 6px 0 6px 2px;
+  padding: 4px 10px;
+  border-left: 2px solid rgba(160, 190, 230, 0.55);
+  border-radius: 2px;
+  background: rgba(120, 150, 190, 0.07);
+  color: #9fb2c9;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+  /* 长摘要要能换行，不能把列撑爆。 */
+  overflow-wrap: anywhere;
+}
+
+.story-request[data-request-kind="combat_action"] {
+  border-left-color: rgba(230, 176, 160, 0.6);
+  background: rgba(190, 130, 110, 0.08);
+  color: #c8ab9e;
+}
+
+/* ===== F6：检定卡与骰子卡（内联进剧情流） ===== */
+
+.check-card,
+.roll-card {
+  margin: 6px 0;
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 80%, #000 20%);
+  font-size: 12px;
+}
+
+.check-head,
+.roll-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.check-title,
+.roll-title {
+  font-weight: 600;
+}
+
+.check-body,
+.roll-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted, #8a94a6);
+  font-variant-numeric: tabular-nums;
+}
+
+.check-verdict {
+  font-weight: 600;
+}
+
+.check-card[data-success="true"] .check-verdict { color: #7ddc8a; }
+.check-card[data-success="false"] .check-verdict { color: #f08a8a; }
+
+/* DC 来源小标记：规则给的还是 DM 给的。 */
+.check-source {
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted, #8a94a6);
+  font-size: 11px;
+}
+
+/* 暗骰：DM 视角**照显数值**，但加深徽标 + 弱化对比度 + 斜纹，一眼能看出"角色不知道这件事"。 */
+.check-secret {
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid #6b4b16;
+  background: #2a2213;
+  color: #ffd166;
+  font-size: 11px;
+}
+
+.check-card[data-secret="true"] {
+  opacity: 0.72;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 209, 102, 0.06) 0 6px,
+    transparent 6px 12px
+  );
+  border-style: dashed;
+}
+
+.roll-body .roll-expression {
+  font-family: var(--mono, ui-monospace, monospace);
+}
+
+/* F7-③：rail 里的格子允许收缩——否则长内容会把列顶宽，把 rail 撑出 3px 溢出。 */
+.rail-cell { min-width: 0; }
+.rail-cell--backstage, #col5-title { min-width: 0; }
+
+/* ===== 地图编辑器（M1，/map-editor） ===== */
+
+body.editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-header h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.editor-upload {
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.editor-primary {
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--accent, #4a7);
+  background: var(--accent, #4a7);
+  color: #fff;
+  cursor: pointer;
+}
+
+.editor-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted, #888);
+}
+
+.editor-status[data-tone="ok"] { color: #3a9; }
+.editor-status[data-tone="warn"] { color: #c90; }
+.editor-status[data-tone="error"] { color: #d55; }
+
+.editor-body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  min-height: 0;
+}
+
+.editor-side {
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.editor-side h2 {
+  font-size: 12px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted, #888);
+  margin: 0 0 6px;
+}
+
+.editor-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editor-cast-item {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.editor-cast-item:hover {
+  background: rgba(127, 127, 127, .12);
+}
+
+.editor-token-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.editor-token-item span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-token-item button {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--muted, #888);
+}
+
+.editor-hint {
+  font-size: 12px;
+  color: var(--muted, #888);
+  margin: 4px 0 0;
+}
+
+.editor-board {
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.editor-board .board {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ===== 地图结构层（M2）：房间填充 + 墙 / 门 / 窗 ===== */
+
+/* 房间：填充必须很淡（fill-opacity ≤ .12），不能盖住底图的手绘细节。 */
+.board-room {
+  fill: #6e91d2;
+  fill-opacity: .1;
+  stroke: #6e91d2;
+  stroke-opacity: .45;
+  stroke-width: 1;
+  stroke-dasharray: 6 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.board-room-label {
+  fill: rgba(50, 68, 105, .8);
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, .8);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* 缩得太小时房间名糊成一团：只隐名字，墙与填充仍在。 */
+.board[data-zoom="out"] .board-room-label {
+  display: none;
+}
+
+.board-wall {
+  fill: none;
+  stroke: #2b2b36;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* 门：短划虚线；开着的门更疏、更淡。 */
+.board-wall--door {
+  stroke: #8a5a1e;
+  stroke-dasharray: 12 6;
+}
+
+.board-wall--door[data-open="true"] {
+  stroke-dasharray: 3 9;
+  opacity: .55;
+}
+
+/* 窗：长划 + 点（不挡通行、挡视线）。 */
+.board-wall--window {
+  stroke: #3a7f6a;
+  stroke-dasharray: 16 4 4 4;
+}
+
+/* 编辑器里的选中态（M2）：墙 / 房间 / 顶点。 */
+.board-wall--selected,
+.board-room--selected {
+  stroke: #e0559a;
+  stroke-opacity: 1;
+  stroke-width: 4;
+}
+
+.board-room--selected {
+  fill-opacity: .18;
+}
+
+.board-vertex {
+  fill: #fff;
+  stroke: #e0559a;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  cursor: grab;
+}
+
+.board-draft {
+  fill: none;
+  stroke: #2f8fd8;
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+  pointer-events: none;
+}
+
+.board-draft-point {
+  fill: #2f8fd8;
+  pointer-events: none;
+}
+
+/* ===== 编辑器工具栏与顶点层（M2） ===== */
+
+.editor-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.editor-tools button {
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.editor-tools button.is-active {
+  border-color: var(--accent, #4a7);
+  background: rgba(80, 170, 120, .16);
+}
+
+.editor-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+/* 编辑器画布要占满可用高度（M2 排版修复）：否则画墙时视野太小。 */
+body.editor {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.editor-board {
+  position: relative;
+}
+
+.editor-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  /* 必须盖在 `.board` 之上：两者都在 #editor-board 里，overlay 在 DOM 里**先**出现，
+     同级定位元素后者在上——不加 z-index 时顶点手柄看得见却点不到（M2 的"拖顶点"因此从未真的可用）。 */
+  z-index: 2;
+}
+
+/* 顶点手柄：只画在选中对象上，可以拖着改那一个点。 */
+.editor-vertex {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  border: 2px solid #e0559a;
+  background: #fff;
+  pointer-events: auto;
+  cursor: grab;
+  box-sizing: border-box;
+}
+
+.editor-vertex[data-active="true"] {
+  background: #e0559a;
+  cursor: grabbing;
+}
+
+/* 编辑器画布撑满可用高度（M2 排版修复）：战术板的 4/3 与 46vh 限制在编辑器里不适用。 */
+.editor-board .board {
+  aspect-ratio: auto;
+  max-height: none;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+
+/* 房间属性表单（M2）：闭合多边形后弹出。 */
+.editor-dialog {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  min-width: 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg, #fff);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
+}
+
+.editor-dialog[hidden] {
+  display: none;
+}
+
+.editor-dialog h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.editor-dialog label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.editor-dialog input,
+.editor-dialog select {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+}
+
+.editor-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== token 的指针命中（r4 高危项：此前 overlay 整体 pointer-events:none，
+   token 主块没有重置，于是 elementFromPoint 永远命中底图，拖/点/双击三条链路全失效）===== */
+
+.board-token {
+  /* `pointer-events` 是继承属性：overlay 设了 none，子元素必须显式重置回来。 */
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.board-token:active {
+  cursor: grabbing;
+}
+
+/* 环与文字只是装饰，别抢 token 的点击（否则点在徽标上 closest('.board-token') 仍能命中，
+   但点在环上会让命中区域忽大忽小，手感不一致）。 */
+.board-token-ring,
+.board-token-badge,
+.board-token-label {
+  pointer-events: none;
+}
+
+/* ===== 房间 / 墙的指针命中（r4 第二个中危：与 token 同根因——overlay 的 none 被继承）=====
+   只在"选择"状态接事件：绘制 / 取点 / 测量时必须让开，否则房间 fill 会把落点吃掉。 */
+.board[data-hit="on"] .board-room,
+.board[data-hit="on"] .board-wall,
+/* 区域（M7）**必须**在这一组里：漏掉它，区域永远接不到事件，也就永远选不中。 */
+.board[data-hit="on"] .board-zone {
+  /* visiblePainted：房间命中 fill 区域；墙 fill 是 none，于是只有**描边**命中（点墙线才对）。 */
+  pointer-events: visiblePainted;
+}
+
+.board[data-hit="on"] .board-wall,
+.board[data-hit="on"] .board-room,
+.board[data-hit="on"] .board-zone {
+  cursor: pointer;
+}
+
+/* ===== 通用页面内对话框（替代 原生 confirm / prompt）===== */
+
+.app-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .38);
+}
+
+.app-dialog {
+  min-width: 300px;
+  max-width: min(420px, 92vw);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg, #fff);
+  box-shadow: 0 14px 44px rgba(0, 0, 0, .3);
+}
+
+.app-dialog h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.app-dialog-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted, #777);
+}
+
+.app-dialog-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.app-dialog-row > span:first-child {
+  flex: 0 0 auto;
+}
+
+.app-dialog-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.app-dialog-row input:focus {
+  outline: 2px solid var(--accent, #4a7);
+  outline-offset: 1px;
+}
+
+.app-dialog-suffix {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--muted, #777);
+}
+
+.app-dialog-note {
+  margin: -4px 0 0;
+  font-size: 12px;
+  color: var(--muted, #777);
+}
+
+.app-dialog-error {
+  margin: 0;
+  font-size: 12px;
+  color: #d9534f;
+}
+
+.app-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.app-dialog-actions button {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-dialog-actions .app-dialog-primary {
+  border-color: var(--accent, #4a7);
+  background: var(--accent, #4a7);
+  color: #fff;
+}
+
+.app-dialog-actions .app-dialog-danger {
+  border-color: #d9534f;
+  background: #d9534f;
+  color: #fff;
+}
+
+/* 在场角色勾选列表（r13）：替代原来的逗号文本框。 */
+.cast-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cast-picker-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cast-picker-bar button {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.cast-picker-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 可滚动：角色多的时候不能把面板撑爆。 */
+.cast-picker-list {
+  max-height: 160px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.cast-picker-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 必须重置 display：`.roleplay-form input` 把输入框设成了 block，
+   复选框继承后也独占一行（截图里勾选框与文字上下错开）。 */
+.cast-picker-item input {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  margin: 0;
+}
+
+/* 顶栏的链接型 pill（地图编辑器入口）：视觉与 button.pill 一致。 */
+a.pill {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ===== sketch（手绘、无底图）配色 =====
+   深色底上原来的墙色 #2b2b36 几乎看不见（截图验收时才发现）。 */
+.board[data-mode="sketch"] .board-wall {
+  stroke: #c8d2e0;
+}
+
+.board[data-mode="sketch"] .board-wall--door {
+  stroke: #e0a94f;
+}
+
+.board[data-mode="sketch"] .board-wall--window {
+  stroke: #6fd0ae;
+}
+
+.board[data-mode="sketch"] .board-room {
+  fill-opacity: .16;
+  stroke-opacity: .7;
+}
+
+/* 迷雾三支笔（M6a）：进入迷雾后显示三个子按钮。 */
+.fog-pens {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.fog-pens[hidden] {
+  display: none;
+}
+
+.fog-pens button.is-active[data-fog="reveal"] { border-color: #6aa9ff; background: rgba(106, 169, 255, .2); }
+.fog-pens button.is-active[data-fog="sense"] { border-color: #7cdcb4; background: rgba(124, 220, 180, .2); }
+.fog-pens button.is-active[data-fog="hide"] { border-color: #8b93a7; background: rgba(139, 147, 167, .25); }
+
+.fog-pens button:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+/* 特殊区域（M7）：名称标签要有描边，压在填充上也读得清。 */
+.board-zone-label {
+  fill: #eef3fa;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, .7);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+/* 编辑器表单里的单行复选框（区域「对玩家可见」）。 */
+.editor-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.editor-check input {
+  width: auto;
+  margin: 0;
+}
+
+/* 选中的区域（M7）：与墙/房间同一套高亮语义。 */
+.board-zone--selected {
+  stroke-width: 3;
+  fill-opacity: .28;
+}
+
+/* ——— 后台观察页（《叙事模式后台与上下文设计》§3.2）：body.backstage 作用域，不影响主界面 ——— */
+
+body.backstage {
+  margin: 0;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: #14161c;
+  color: #e6e8ee;
+  font: 14px/1.6 system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+
+.backstage-header {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2f3a;
+  background: #1a1d25;
+}
+
+.backstage-header h1 { font-size: 15px; margin: 0 8px 0 0; }
+
+.backstage-status { font-size: 12px; color: #9aa3b2; }
+.backstage-status[data-state="error"] { color: #e06c75; }
+
+.backstage-toggle,
+.backstage-field { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9aa3b2; }
+
+.backstage-field select,
+.backstage-field input { font: inherit; font-size: 12px; padding: 2px 6px; }
+
+.backstage-field input[type="number"] { width: 76px; }
+
+.backstage-header button {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid #2a2f3a;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* 三栏宽度可拖（批 2）：前两栏按百分比存，第三栏吃掉剩余，窄屏单列时退回 1fr。
+   默认 24% / 46% / 剩余 ≈ 30%——正文那栏（左「前台剧情」）给够宽度，长幕不再一行十几字。 */
+.backstage-grid {
+  display: grid;
+  grid-template-columns:
+    var(--bs-w1, 24%) var(--bs-splitter, 6px)
+    var(--bs-w2, 46%) var(--bs-splitter, 6px)
+    minmax(0, 1fr);
+  gap: 8px;
+  padding: 8px;
+  min-height: 0;
+}
+
+.bs-splitter {
+  cursor: col-resize;
+  touch-action: none;
+  border-radius: 3px;
+  background: #2a2f3a;
+  align-self: stretch;
+  justify-self: center;
+  width: var(--bs-splitter, 6px);
+  transition: background 0.12s;
+}
+
+.bs-splitter:hover,
+.bs-splitter[data-dragging="true"] { background: #7aa2f7; }
+
+.backstage-col {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  background: #1a1d25;
+  padding: 8px 10px;
+}
+
+.backstage-col h2 {
+  font-size: 13px;
+  margin: 0 0 6px;
+  color: #9aa3b2;
+  font-weight: 600;
+}
+
+.backstage-dim { font-weight: 400; opacity: 0.7; }
+
+.backstage-list { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+
+.bs-turn { border-left: 2px solid var(--border, #2a2f3a); padding-left: 8px; }
+.bs-turn-head { font-size: 12px; color: #9aa3b2; }
+.bs-line { margin-top: 2px; color: #dfe3ec; }
+.bs-who { font-weight: 600; margin-right: 6px; color: #7aa2f7; }
+
+.bs-event { border: 1px solid #2a2f3a; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.bs-event--thought { background: rgba(122, 162, 247, 0.06); }
+.bs-event--tool { background: rgba(158, 206, 106, 0.06); }
+
+.bs-rev-badge { font-size: 11px; color: #9aa3b2; margin-right: 6px; }
+.bs-tool { font-weight: 600; color: #9ece6a; margin-left: 6px; }
+.bs-args, .bs-result {
+  display: block;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: #9aa3b2;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.bs-thought { white-space: pre-wrap; font-size: 12px; color: #cfd5e2; }
+
+.bs-kv { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.bs-kv span { color: #9aa3b2; }
+.bs-empty { color: #9aa3b2; font-size: 12px; }
+
+@media (max-width: 1100px) {
+  .backstage-grid { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(220px, 1fr); }
+  /* 单列时没有"栏"可拖：把分隔条收起来，宽度变量也就不生效了。 */
+  .bs-splitter { display: none; }
+}
+
+/* 观察页右栏的提醒表单（B5）：只发 HTTP，不参与剧情推进。 */
+.bs-note { margin-top: auto; padding-top: 8px; border-top: 1px solid #2a2f3a; display: flex; flex-direction: column; gap: 6px; }
+.bs-note h3 { font-size: 12px; margin: 0; color: #9aa3b2; font-weight: 600; }
+.bs-note-hint { margin: 0; font-size: 11px; color: #8b93a3; }
+.bs-note-row { display: flex; gap: 6px; align-items: center; }
+.bs-note-row select { font: inherit; font-size: 12px; padding: 2px 6px; }
+.bs-note-row button { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid #2a2f3a; background: transparent; color: inherit; cursor: pointer; }
+.bs-note textarea { font: inherit; font-size: 12px; padding: 6px; border-radius: 6px; border: 1px solid #2a2f3a; background: #11131a; color: #dfe3ec; resize: vertical; }
+.bs-note-status { font-size: 11px; color: #9aa3b2; min-height: 14px; }
+.bs-note-status[data-state="error"] { color: #e06c75; }
+.bs-note-status[data-state="ok"] { color: #9ece6a; }

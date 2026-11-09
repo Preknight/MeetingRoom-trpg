@@ -1,0 +1,166 @@
+{
+  "seed": 7,
+  "rounds": 0,
+  "combatants": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "side": "party",
+      "dexterityModifier": 3,
+      "initiative": 15,
+      "speedFeet": 30
+    },
+    {
+      "id": "vecna",
+      "name": "Vecna",
+      "side": "foe",
+      "dexterityModifier": 2,
+      "initiative": 10,
+      "speedFeet": 30
+    }
+  ],
+  "sheets": {
+    "ella": {
+      "characterId": "ella",
+      "maxHp": 30,
+      "currentHp": 20,
+      "tempHp": 0,
+      "spellSlots": {
+        "3": {
+          "max": 1,
+          "used": 0
+        },
+        "4": {
+          "max": 1,
+          "used": 0
+        }
+      }
+    },
+    "vecna": {
+      "characterId": "vecna",
+      "maxHp": 40,
+      "currentHp": 40,
+      "tempHp": 0,
+      "spellSlots": {}
+    }
+  },
+  "steps": [
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fireball|XPHB",
+      "castAtLevel": 3,
+      "saveDc": 15,
+      "targetSaveBonus": 0,
+      "targetArmorClass": 10,
+      "distanceFeet": 60,
+      "reason": "3 环火球"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fireball|XPHB",
+      "castAtLevel": 3,
+      "saveDc": 15,
+      "targetSaveBonus": 0,
+      "distanceFeet": 60,
+      "expectRejected": true,
+      "reason": "3 环已用完"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fireball|XPHB",
+      "castAtLevel": 4,
+      "saveDc": 15,
+      "targetSaveBonus": 0,
+      "distanceFeet": 60,
+      "reason": "4 环升环火球"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fire Bolt|XPHB",
+      "attackBonus": 5,
+      "targetArmorClass": 5,
+      "distanceFeet": 60,
+      "characterLevel": 1,
+      "reason": "戏法（1 级：1d10）"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fire Bolt|XPHB",
+      "attackBonus": 5,
+      "targetArmorClass": 5,
+      "distanceFeet": 60,
+      "characterLevel": 5,
+      "reason": "戏法（5 级：2d10）"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "longRest": true,
+      "actorId": "ella"
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "ella",
+      "targetId": "vecna",
+      "spellId": "Fireball|XPHB",
+      "castAtLevel": 3,
+      "saveDc": 15,
+      "targetSaveBonus": 0,
+      "distanceFeet": 60,
+      "reason": "长休后再放 3 环火球"
+    },
+    {
+      "advanceTurn": true
+    },
+    {
+      "kind": "cast_spell",
+      "actorId": "vecna",
+      "targetId": "ella",
+      "spellId": "Fireball|XPHB",
+      "castAtLevel": 3,
+      "saveDc": 15,
+      "targetSaveBonus": 0,
+      "distanceFeet": 60,
+      "expectRejected": true,
+      "reason": "非施法者"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "storyId": "detective-office",
+  "worldview": "1930 年代的海港城：雾、码头、霓虹与走私。私家侦探靠人脉、直觉和一点运气吃饭。",
+  "situation": "夜雨。法医推开侦探事务所的门，看到侦探、助手与委托人围在桌前，正在讨论桌上那件证物。",
+  "userRole": "本场导演，兼旁白",
+  "cast": ["coroner", "detective", "detective-assistant", "client"]
+}

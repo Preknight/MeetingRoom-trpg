@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MeetingRoom.Core\MeetingRoom.Core.csproj" />
+    <ProjectReference Include="..\MeetingRoom.Agent\MeetingRoom.Agent.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <!--
+      前端资源是物理目录、与 exe 同级（硬约束 2），不参与 StaticWebAssets 的构建期指纹与清单机制：
+      该机制把 wwwroot 的 ContentRoot 记成项目目录，而这里的文件来自仓库根 wwwroot/，
+      会让 dotnet run（Development）在启动时抛 DirectoryNotFoundException。
+      禁用后开发期与发布期一样，都由 UseStaticFiles() 直接读 exe 同级的 wwwroot/。
+    -->
+    <StaticWebAssetsEnabled>false</StaticWebAssetsEnabled>
+  </PropertyGroup>
+
+  <!--
+    前端资源始终是物理目录、与 exe 同级（硬约束 2）。
+    开发期 exe 在 bin/<Config>/net10.0/，这条 Content 规则让开发期与发布期的
+    目录相对关系完全一致，路径基准 PathLayout 才能两种形态通用（实现步骤 2.3）。
+  -->
+  <ItemGroup>
+    <Content Include="..\..\wwwroot\**" Link="wwwroot\%(RecursiveDir)%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!--
+    规则数据包（schema meetingroom-rules/4，由 tools/export_rules.py 生成）：
+    静态资料，开发期与发布期都要落在 exe 同级的 data/rules/ 下，与 wwwroot 同一个理由用 Content 拷贝。
+    只拷 data\rules 这一棵，不碰 data\ 下其他运行时目录（roles / stories / maps …）。
+  -->
+  <ItemGroup>
+    <!--
+      `data\rules\` 在项目目录内，SDK 默认已经把它作为 Content 收进来了；
+      再用 Include 会触发 NETSDK1022（重复 Content 项）。这里用 Update 只补拷贝属性。
+      目标是 exe 同级的 data/rules/，与项目内的相对路径一致，所以不需要 Link。
+    -->
+    <Content Update="data\rules\**"
+             CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

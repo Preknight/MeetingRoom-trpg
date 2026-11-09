@@ -1,0 +1,61 @@
+{
+  "schema": "export-report/4",
+  "base": "rules-data.json",
+  "bestiaryIndex": 4574,
+  "monsterTemplates": {
+    "total": 706,
+    "withHp": 685,
+    "withCr": 665,
+    "withTraits": 474,
+    "withActions": 694,
+    "missingRaw": 0
+  },
+  "classes": {
+    "total": 13,
+    "multiVersion": [],
+    "withFeatures": 13,
+    "withCn": 13,
+    "featureCount": 302
+  },
+  "subclasses": {
+    "total": 200,
+    "withFeatures": 200,
+    "inherited": 124,
+    "legacyOnly": 0,
+    "featureCount": 1388
+  },
+  "feats": {
+    "total": 128,
+    "byRuleset": {
+      "2014": 23,
+      "2024": 105
+    },
+    "withCn": 128
+  },
+  "optionalFeatures": {
+    "total": 156,
+    "byType": {
+      "EI": 58,
+      "MV:B": 23,
+      "AI": 16,
+      "FS:F": 11,
+      "FS:R": 7,
+      "AS": 8,
+      "FS:P": 7,
+      "ED": 17,
+      "MM": 10,
+      "RP": 4,
+      "RN": 6,
+      "FS:B": 2,
+      "PB": 1
+    }
+  },
+  "actions": {
+    "total": 31,
+    "byRuleset": {
+      "2014": 13,
+      "2024": 18
+    }
+  },
+  "problems": []
+}

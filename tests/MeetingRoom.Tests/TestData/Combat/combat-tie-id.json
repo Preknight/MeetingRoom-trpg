@@ -1,0 +1,8 @@
+{
+  "seed": 7,
+  "rounds": 1,
+  "combatants": [
+    { "id": "bob", "name": "Bob", "side": "foe", "dexterityModifier": 3, "initiative": 15 },
+    { "id": "alice", "name": "Alice", "side": "party", "dexterityModifier": 3, "initiative": 15 }
+  ]
+}

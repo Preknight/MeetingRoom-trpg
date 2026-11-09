@@ -1,0 +1,184 @@
+{
+  "id": "map-charview0001",
+  "name": "角色视角测试图",
+  "mode": "sketch",
+  "image": null,
+  "grid": {
+    "dpi": 100,
+    "offsetX": 0,
+    "offsetY": 0,
+    "gridType": "square",
+    "scale": 5
+  },
+  "rooms": [
+    {
+      "id": "r1",
+      "name": "储藏室",
+      "polygon": [
+        [
+          0,
+          0
+        ],
+        [
+          1200,
+          0
+        ],
+        [
+          1200,
+          1200
+        ],
+        [
+          0,
+          1200
+        ]
+      ],
+      "light": "dim",
+      "note": ""
+    }
+  ],
+  "walls": [
+    {
+      "id": "w1",
+      "points": [
+        [
+          1000,
+          0
+        ],
+        [
+          1000,
+          1200
+        ]
+      ],
+      "kind": "wall",
+      "open": false
+    }
+  ],
+  "tokens": [
+    {
+      "id": "ella",
+      "name": "Ella",
+      "x": 500,
+      "y": 500,
+      "visible": true
+    },
+    {
+      "id": "bob",
+      "name": "鲍勃",
+      "x": 800,
+      "y": 500,
+      "visible": true
+    },
+    {
+      "id": "ghost",
+      "name": "幽灵",
+      "x": 1800,
+      "y": 1400,
+      "visible": true
+    },
+    {
+      "id": "shy",
+      "name": "躲着的人",
+      "x": 300,
+      "y": 700,
+      "visible": false
+    }
+  ],
+  "zones": [
+    {
+      "id": "z1",
+      "name": "油腻术",
+      "kind": "spell",
+      "shape": {
+        "type": "circle",
+        "center": [
+          500,
+          500
+        ],
+        "radiusCells": 1
+      },
+      "color": "#c9a227",
+      "note": "DC 13 敏捷豁免",
+      "visible": true
+    },
+    {
+      "id": "z2",
+      "name": "密门",
+      "kind": "portal",
+      "shape": {
+        "type": "circle",
+        "center": [
+          500,
+          500
+        ],
+        "radiusCells": 1
+      },
+      "color": "#7b61ff",
+      "note": "不该被角色看见",
+      "visible": false
+    }
+  ],
+  "fog": {
+    "enabled": true,
+    "explored": [
+      [
+        0,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        4,
+        5
+      ],
+      [
+        5,
+        4
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        5,
+        6
+      ],
+      [
+        6,
+        5
+      ],
+      [
+        7,
+        7
+      ],
+      [
+        8,
+        5
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        9,
+        9
+      ],
+      [
+        10,
+        10
+      ]
+    ],
+    "visible": [
+      [
+        5,
+        5
+      ]
+    ]
+  },
+  "updatedAt": 0
+}

@@ -1,0 +1,28 @@
+{
+  "seed": 4,
+  "rounds": 0,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15, "speedFeet": 30 },
+    { "id": "vecna", "name": "Vecna", "side": "foe", "dexterityModifier": 2, "initiative": 10, "speedFeet": 30 }
+  ],
+  "sheets": {
+    "ella": { "characterId": "ella", "maxHp": 30, "currentHp": 30, "tempHp": 0 },
+    "vecna": { "characterId": "vecna", "maxHp": 12, "currentHp": 12, "tempHp": 0 }
+  },
+  "steps": [
+    { "kind": "move", "actorId": "ella", "distanceFeet": 5, "reason": "靠近 5 尺" },
+    { "kind": "move", "actorId": "ella", "distanceFeet": 30, "expectRejected": true, "reason": "剩余不够" },
+    { "kind": "move", "actorId": "ella", "distanceFeet": 25, "reason": "走完剩余" },
+    { "kind": "attack", "actorId": "ella", "targetId": "vecna", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5, "reason": "劈砍" },
+    { "kind": "attack", "actorId": "ella", "targetId": "vecna", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5,
+      "expectRejected": true, "reason": "第二次动作" },
+    { "kind": "dodge", "actorId": "ella", "expectRejected": true, "reason": "Action 已用" },
+    { "advanceTurn": true },
+    { "kind": "dodge", "actorId": "vecna", "reason": "防御" },
+    { "advanceTurn": true },
+    { "kind": "attack", "actorId": "ella", "targetId": "vecna", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5, "reason": "打一个在 Dodge 的对手" }
+  ]
+}

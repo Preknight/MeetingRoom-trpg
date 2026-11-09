@@ -1,0 +1,10 @@
+{
+  "seed": 4,
+  "rounds": 0,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15, "speedFeet": 30 }
+  ],
+  "checks": [
+    { "actorId": "ella", "kind": "skill", "skill": "Perception", "dc": 15, "reason": "没有数值表、也没传 modifier" }
+  ]
+}

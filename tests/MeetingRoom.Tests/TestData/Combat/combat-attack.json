@@ -1,0 +1,22 @@
+{
+  "seed": 11,
+  "rounds": 1,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15 },
+    { "id": "vecna", "name": "Vecna", "side": "foe", "dexterityModifier": 2, "initiative": 10 }
+  ],
+  "actions": [
+    { "actorId": "ella", "targetId": "vecna", "kind": "attack", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 14,
+      "reason": "劈砍" },
+    { "actorId": "vecna", "targetId": "ella", "kind": "attack", "weaponId": "Longsword|XPHB",
+      "attackBonus": 13, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 16,
+      "reason": "反击" }
+  ],
+  "checks": [
+    { "actorId": "ella", "kind": "skill", "skill": "persuasion", "dc": 15, "modifier": 5, "reason": "说服守卫" },
+    { "actorId": "ella", "kind": "skill", "skill": "insight", "dc": 14, "modifier": 2, "visibility": "secret", "reason": "看穿商人" },
+    { "actorId": "ella", "kind": "skill", "skill": "perception", "dc": 12, "modifier": 4, "reason": "察觉伏击" },
+    { "actorId": "ella", "kind": "skill", "skill": "Sleight of Hand", "dc": 13, "modifier": 3, "reason": "顺走钥匙" }
+  ]
+}

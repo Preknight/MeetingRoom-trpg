@@ -1,0 +1,8 @@
+{
+  "seed": 20261026,
+  "rounds": 3,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "speedFeet": 30 },
+    { "id": "goblin-1", "name": "Goblin", "cnName": "地精", "side": "foe", "dexterityModifier": 2, "speedFeet": 30 }
+  ]
+}

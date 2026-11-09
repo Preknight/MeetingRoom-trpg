@@ -1,0 +1,10 @@
+{
+  "characterId": "alias-conflict",
+  "maxHp": 18,
+  "currentHp": 18,
+  "tempHp": 0,
+  "ac": 15,
+  "armorClass": 16,
+  "abilities": { "str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10 },
+  "profBonus": 2
+}

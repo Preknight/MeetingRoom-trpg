@@ -1,0 +1,36 @@
+{
+  "seed": 2,
+  "rounds": 0,
+  "combatants": [
+    { "id": "ella", "name": "Ella", "side": "party", "dexterityModifier": 3, "initiative": 15, "speedFeet": 30 },
+    { "id": "vecna", "name": "Vecna", "side": "foe", "dexterityModifier": 2, "initiative": 10, "speedFeet": 30 }
+  ],
+  "sheets": {
+    "ella": { "characterId": "ella", "maxHp": 30, "currentHp": 30, "tempHp": 0 },
+    "vecna": {
+      "characterId": "vecna",
+      "maxHp": 12,
+      "currentHp": 12,
+      "tempHp": 0,
+      "concentration": { "spellId": "Fly|PHB", "saveDc": null },
+      "abilities": { "constitution": 14 },
+      "proficiencyBonus": 2,
+      "saveProficiencies": ["constitution"]
+    }
+  },
+  "steps": [
+    { "kind": "attack", "actorId": "ella", "targetId": "vecna", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5,
+      "distanceFeet": 10, "expectRejected": true, "reason": "目标在触及外" },
+    { "kind": "move", "actorId": "ella", "distanceFeet": 5,
+      "provokesOpportunityFrom": ["vecna"], "reason": "后撤（离开触及）" },
+    { "kind": "move", "actorId": "ella", "distanceFeet": 5,
+      "provokesOpportunityFrom": ["vecna"], "reason": "同轮再撤（不应再触发）" },
+    { "kind": "disengage", "actorId": "ella", "reason": "脱离" },
+    { "kind": "move", "actorId": "ella", "distanceFeet": 5,
+      "provokesOpportunityFrom": ["vecna"], "reason": "Disengage 后撤（不触发）" },
+    { "kind": "attack", "actorId": "ella", "targetId": "vecna", "weaponId": "Longsword|XPHB",
+      "attackBonus": 5, "damageBonus": 3, "damageType": "slashing", "targetArmorClass": 5,
+      "distanceFeet": 5, "reason": "劈砍（触发专注检定）" }
+  ]
+}

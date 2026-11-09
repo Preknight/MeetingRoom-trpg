@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>地图编辑器 · MeetingRoom</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="icon" href="data:,">
+</head>
+<body class="editor">
+  <header class="editor-header">
+    <h1>地图编辑器</h1>
+    <select id="map-select" aria-label="选择地图"></select>
+    <label class="editor-upload">
+      上传底图
+      <input id="map-upload" type="file" accept="image/webp,image/png">
+    </label>
+    <button type="button" id="map-blank">新建空白地图</button>
+    <button id="save-button" class="editor-primary">保存</button>
+    <span id="editor-status" class="editor-status" role="status"></span>
+  </header>
+
+  <div class="editor-tools" role="toolbar" aria-label="绘制工具">
+    <button type="button" data-tool="select" class="is-active">选择</button>
+    <button type="button" data-tool="pan" title="拖动画布平移（按住空格可临时切换）">移动</button>
+    <button type="button" data-tool="wall">画墙</button>
+    <select id="wall-kind" aria-label="墙的种类">
+      <option value="wall">墙</option>
+      <option value="door">门</option>
+      <option value="window">窗</option>
+    </select>
+    <button type="button" data-tool="room">画房间</button>
+    <button type="button" data-tool="zone" title="特殊区域：多边形或圆形">特殊区域</button>
+    <select id="zone-shape" aria-label="区域形状">
+      <option value="polygon">多边形</option>
+      <option value="circle">圆形</option>
+    </select>
+    <button type="button" id="fog-tool" title="迷雾：点一次进入，再点循环三支笔">迷雾</button>
+    <span class="fog-pens" hidden>
+      <button type="button" data-fog="reveal" title="揭示：黑 → 半透明">揭示</button>
+      <button type="button" data-fog="sense" title="视野：→ 全亮">视野</button>
+      <button type="button" data-fog="hide" title="遮黑：→ 黑">遮黑</button>
+      <span class="editor-sep"></span>
+      <button type="button" id="fog-reveal-all" title="把所有格标成已探索（半透明）；当前视野不动">全部揭示</button>
+      <button type="button" id="fog-hide-all" title="清空所有探索记录，回到全黑">全部遮黑</button>
+    </span>
+    <span class="editor-sep"></span>
+    <button type="button" id="snap-toggle" title="吸附到格点 / 格心；按住 Alt 临时关闭">吸附：格点</button>
+    <span class="editor-sep"></span>
+    <button type="button" id="undo-button" title="Ctrl+Z">撤销</button>
+    <button type="button" id="redo-button" title="Ctrl+Shift+Z">重做</button>
+    <button type="button" id="delete-button" title="Delete">删除选中</button>
+  </div>
+
+  <main class="editor-body">
+    <aside class="editor-side">
+      <section>
+        <h2>角色</h2>
+        <p class="editor-hint">点一个角色，再在地图上点位置，就放一个 token。</p>
+        <ul id="cast-list" class="editor-list"></ul>
+      </section>
+
+      <section>
+        <h2>已放 token</h2>
+        <p class="editor-hint">拖动可改位置；勾选框控制是否对玩家可见。</p>
+        <ul id="token-list" class="editor-list"></ul>
+      </section>
+    </aside>
+
+    <!-- 区域属性表单（M7）：形状落定后弹出来填名称 / 类型 / 备注 / 颜色 / 可见性。 -->
+    <div id="zone-form" class="editor-dialog" hidden>
+      <h3>区域属性</h3>
+      <label>名称 <input id="zone-name" type="text" value="区域" maxlength="40"></label>
+      <label>类型
+        <select id="zone-kind">
+          <option value="spell">法术</option>
+          <option value="terrain">地形</option>
+          <option value="portal">传送门</option>
+          <option value="hazard">危险</option>
+          <option value="custom">其他</option>
+        </select>
+      </label>
+      <label id="zone-radius-row" hidden>半径 <input id="zone-radius" type="number" min="1" max="12" step="1" value="2"> 格</label>
+      <label>备注 <input id="zone-note" type="text" placeholder="例：DC 13 敏捷豁免" maxlength="80"></label>
+      <label>颜色 <input id="zone-color" type="color" value="#c9a227"></label>
+      <label class="editor-check"><input id="zone-visible" type="checkbox" checked> 对玩家可见</label>
+      <div class="editor-dialog-actions">
+        <button type="button" id="zone-ok" class="editor-primary">确定</button>
+        <button type="button" id="zone-cancel">取消</button>
+      </div>
+    </div>
+
+    <!-- 房间表单（M2）：闭合多边形后弹出来填名称与光照。用页面内表单而不是 原生 prompt——
+         后者在受控浏览器里会被禁用，也没法一次填两个字段。 -->
+    <div id="room-form" class="editor-dialog" hidden>
+      <h3>房间属性</h3>
+      <label>名称 <input id="room-name" type="text" value="房间" maxlength="40"></label>
+      <label>光照
+        <select id="room-light">
+          <option value="bright">明亮</option>
+          <option value="dim" selected>昏暗</option>
+          <option value="dark">黑暗</option>
+        </select>
+      </label>
+      <div class="editor-dialog-actions">
+        <button type="button" id="room-ok" class="editor-primary">确定</button>
+        <button type="button" id="room-cancel">取消</button>
+      </div>
+    </div>
+
+    <section id="editor-board" class="editor-board">
+      <!-- 顶点层：HTML 绝对定位（跟着 <img> 的实际显示框走，不必复制 board 的视图变换）。 -->
+      <div id="editor-overlay" class="editor-overlay"></div>
+    </section>
+  </main>
+
+  <script type="module" src="js/map-editor.js"></script>
+</body>
+</html>
