@@ -1,6 +1,5 @@
 # Meeting Room
 
-[![build](https://github.com/Preknight/MeetingRoom-trpg/actions/workflows/build.yml/badge.svg)](https://github.com/Preknight/MeetingRoom-trpg/actions/workflows/build.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 多角色 TRPG 叙事引擎：单进程 **.NET 10** 后端 + 原生 HTML/CSS/JS 前端（**无构建步骤**）。
